@@ -1,0 +1,6941 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Yield Analysis Dashboard</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <div class="dashboard-container">
+        <header class="dashboard-header">
+            <h1>Yield Analysis Dashboard</h1>
+        </header>
+
+        <div class="dashboard-grid">
+            <!-- Quality Analysis -->
+            <section class="dashboard-section">
+                <h2>Yield & Quality Analysis</h2>
+                <div class="section-content">
+                    <div class="kpi-cards-grid">
+                        <div class="kpi-card">
+                            <div class="kpi-value">91.5%</div>
+                            <div class="kpi-label">First Pass Yield</div>
+                        </div>
+                        <div class="kpi-card">
+                            <div class="kpi-value">91.5%</div>
+                            <div class="kpi-label">Overall Yield</div>
+                        </div>
+                        <div class="kpi-card">
+                            <div class="kpi-value">59</div>
+                            <div class="kpi-label">Total Units</div>
+                        </div>
+                        <div class="kpi-card">
+                            <div class="kpi-value">6</div>
+                            <div class="kpi-label">Yield Hitters</div>
+                        </div>
+                    </div>
+                    
+                    <div class="chart-container" style="position: relative; height: 300px;">
+                        <canvas id="statusChart"></canvas>
+                    </div>
+                </div>
+            </section>
+
+            
+            <!-- APY - Affected Units Chart Section -->
+            <section class="dashboard-section">
+                <h2>All Passed Yield (APY) - Affected Units</h2>
+                <div class="section-content">
+                    <div class="chart-container" style="position: relative; height: 400px;">
+                        <canvas id="apyAffectedUnitsChart"></canvas>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Hitters Analysis - CLEAN VERSION WITH FAILURE COUNTS -->
+                    
+        <!-- Overall Failure Distributions Dashboard Section -->
+        <section class="dashboard-section overall-distributions-section">
+            <div class="section-header">
+                <h2>Overall Failure Distributions (All JIRA Entries)</h2>
+            </div>
+            <div class="section-content">
+                <div class="overall-distributions-grid">
+                    <div class="distribution-chart-container">
+                        <h3>UBB Distribution</h3>
+                        <canvas id="overallUbbChart" width="300" height="200"></canvas>
+                    </div>
+                    <div class="distribution-chart-container">
+                        <h3>ASIC Distribution</h3>
+                        <canvas id="overallAsicChart" width="300" height="200"></canvas>
+                    </div>
+                    <div class="distribution-chart-container">
+                        <h3>Ethernet Distribution</h3>
+                        <canvas id="overallEthChart" width="300" height="200"></canvas>
+                    </div>
+                    <div class="distribution-chart-container">
+                        <h3>DDR Controller Distribution</h3>
+                        <canvas id="overallControllerChart" width="300" height="200"></canvas>
+                    </div>
+                </div>
+            </div>
+        </section>
+<section class="dashboard-section full-width">
+                <h2>Yield Hitters Analysis</h2>
+                <div class="section-content">
+                    <div class="charts-parallel-grid">
+                        <!-- FPY - Affected Units Chart -->
+                        <div class="chart-container" style="position: relative; height: 400px;">
+                            <canvas id="yieldHittersAffectedUnitsChart"></canvas>
+                        </div>
+                        <!-- FPY - Failure Counts Chart -->
+                        <div class="chart-container" style="position: relative; height: 400px;">
+                            <canvas id="yieldHittersChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- JIRA Correlation Analysis - Full Width -->
+            <section class="dashboard-section full-width">
+                <h2>JIRA Correlation Analysis</h2>
+                <div class="section-content">
+                    <div id="jiraCorrelationContainer" class="jira-correlation-container">
+                        <!-- JIRA correlation cards will be generated here by JavaScript -->
+                    </div>
+                </div>
+            </section>
+        </div>
+    </div>
+
+    <script>
+        window.dashboardData = {
+  "yield_metrics": {
+    "total_units": 59,
+    "first_pass_yield": 54,
+    "all_passed_yield": 54,
+    "fixed_units": 0,
+    "failed_units": 5,
+    "first_pass_percentage": 91.5,
+    "overall_pass_percentage": 91.5,
+    "fixed_percentage": 0.0,
+    "failed_percentage": 8.5
+  },
+  "status_distribution": {
+    "Passed": 54,
+    "Fixed": 0,
+    "Failed": 5
+  },
+  "system_config": {
+    "total_ubbs": 4,
+    "total_asics": 8,
+    "ubb_coverage": 4,
+    "asic_coverage": 8,
+    "eth_ports": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15
+    ],
+    "controllers": [
+      "A",
+      "B",
+      "C",
+      "D",
+      "E",
+      "F",
+      "G",
+      "H"
+    ]
+  },
+  "yield_hitters": [
+    {
+      "jira_entry": "WAIVED - QUAN-371",
+      "jira_summary": "Eth training failures UNDER 40% tolerance",
+      "affected_units": 4,
+      "failure_counts": 7,
+      "failure_rate": "7.02%",
+      "description": "Eth training failures UNDER 40% tolerance",
+      "category": "ethernet",
+      "has_test_data": true,
+      "notes": "Currently tested with 40% ETH tolerance. To be fixed using new AEC cable or ALB.",
+      "error_types": [
+        "From WAIVED - QUAN-371"
+      ],
+      "unique_serials_affected": 4,
+      "apy_affected_units": 0,
+      "ubb_distribution_units": {
+        "UBB_1": 2,
+        "UBB_2": 0,
+        "UBB_3": 1,
+        "UBB_4": 1
+      },
+      "ubb_distribution_failures": {
+        "UBB_1": 2,
+        "UBB_2": 0,
+        "UBB_3": 1,
+        "UBB_4": 4
+      },
+      "ubb_percentages_units": {
+        "UBB_1": 50.0,
+        "UBB_2": 0.0,
+        "UBB_3": 25.0,
+        "UBB_4": 25.0
+      },
+      "ubb_percentages_failures": {
+        "UBB_1": 28.6,
+        "UBB_2": 0.0,
+        "UBB_3": 14.3,
+        "UBB_4": 57.1
+      },
+      "ubb_sorted_keys": [
+        "UBB_1",
+        "UBB_2",
+        "UBB_3",
+        "UBB_4"
+      ],
+      "asic_distribution_units": {
+        "ASIC_1": 2,
+        "ASIC_2": 1,
+        "ASIC_3": 0,
+        "ASIC_4": 0,
+        "ASIC_5": 1,
+        "ASIC_6": 0,
+        "ASIC_7": 1,
+        "ASIC_8": 0
+      },
+      "asic_distribution_failures": {
+        "ASIC_1": 3,
+        "ASIC_2": 1,
+        "ASIC_3": 0,
+        "ASIC_4": 0,
+        "ASIC_5": 2,
+        "ASIC_6": 0,
+        "ASIC_7": 1,
+        "ASIC_8": 0
+      },
+      "asic_percentages_units": {
+        "ASIC_1": 40.0,
+        "ASIC_2": 20.0,
+        "ASIC_3": 0.0,
+        "ASIC_4": 0.0,
+        "ASIC_5": 20.0,
+        "ASIC_6": 0.0,
+        "ASIC_7": 20.0,
+        "ASIC_8": 0.0
+      },
+      "asic_percentages_failures": {
+        "ASIC_1": 42.9,
+        "ASIC_2": 14.3,
+        "ASIC_3": 0.0,
+        "ASIC_4": 0.0,
+        "ASIC_5": 28.6,
+        "ASIC_6": 0.0,
+        "ASIC_7": 14.3,
+        "ASIC_8": 0.0
+      },
+      "asic_sorted_keys": [
+        "ASIC_1",
+        "ASIC_2",
+        "ASIC_3",
+        "ASIC_4",
+        "ASIC_5",
+        "ASIC_6",
+        "ASIC_7",
+        "ASIC_8"
+      ],
+      "controller_distribution_units": {},
+      "controller_distribution_failures": {},
+      "controller_percentages_units": {},
+      "controller_percentages_failures": {},
+      "controller_sorted_keys": [],
+      "eth_distribution_units": {
+        "Eth_7": 1,
+        "Eth_9": 1,
+        "Eth_1": 1,
+        "Eth_11": 1,
+        "Eth_3": 1
+      },
+      "eth_distribution_failures": {
+        "Eth_7": 1,
+        "Eth_9": 1,
+        "Eth_1": 1,
+        "Eth_11": 1,
+        "Eth_3": 1
+      },
+      "eth_percentages_units": {
+        "Eth_7": 20.0,
+        "Eth_9": 20.0,
+        "Eth_1": 20.0,
+        "Eth_11": 20.0,
+        "Eth_3": 20.0
+      },
+      "eth_percentages_failures": {
+        "Eth_7": 20.0,
+        "Eth_9": 20.0,
+        "Eth_1": 20.0,
+        "Eth_11": 20.0,
+        "Eth_3": 20.0
+      },
+      "eth_sorted_keys": [
+        "Eth_1",
+        "Eth_3",
+        "Eth_7",
+        "Eth_9",
+        "Eth_11"
+      ],
+      "heat_map_ubb_asic_units": {
+        "matrix": [
+          [
+            {
+              "row": 1,
+              "col": 1,
+              "row_label": "UBB_1",
+              "col_label": "ASIC_1",
+              "value": 1,
+              "intensity": 1.0
+            },
+            {
+              "row": 1,
+              "col": 2,
+              "row_label": "UBB_1",
+              "col_label": "ASIC_2",
+              "value": 1,
+              "intensity": 1.0
+            },
+            {
+              "row": 1,
+              "col": 3,
+              "row_label": "UBB_1",
+              "col_label": "ASIC_3",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 1,
+              "col": 4,
+              "row_label": "UBB_1",
+              "col_label": "ASIC_4",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 1,
+              "col": 5,
+              "row_label": "UBB_1",
+              "col_label": "ASIC_5",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 1,
+              "col": 6,
+              "row_label": "UBB_1",
+              "col_label": "ASIC_6",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 1,
+              "col": 7,
+              "row_label": "UBB_1",
+              "col_label": "ASIC_7",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 1,
+              "col": 8,
+              "row_label": "UBB_1",
+              "col_label": "ASIC_8",
+              "value": 0,
+              "intensity": 0.0
+            }
+          ],
+          [
+            {
+              "row": 2,
+              "col": 1,
+              "row_label": "UBB_2",
+              "col_label": "ASIC_1",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 2,
+              "col": 2,
+              "row_label": "UBB_2",
+              "col_label": "ASIC_2",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 2,
+              "col": 3,
+              "row_label": "UBB_2",
+              "col_label": "ASIC_3",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 2,
+              "col": 4,
+              "row_label": "UBB_2",
+              "col_label": "ASIC_4",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 2,
+              "col": 5,
+              "row_label": "UBB_2",
+              "col_label": "ASIC_5",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 2,
+              "col": 6,
+              "row_label": "UBB_2",
+              "col_label": "ASIC_6",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 2,
+              "col": 7,
+              "row_label": "UBB_2",
+              "col_label": "ASIC_7",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 2,
+              "col": 8,
+              "row_label": "UBB_2",
+              "col_label": "ASIC_8",
+              "value": 0,
+              "intensity": 0.0
+            }
+          ],
+          [
+            {
+              "row": 3,
+              "col": 1,
+              "row_label": "UBB_3",
+              "col_label": "ASIC_1",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 3,
+              "col": 2,
+              "row_label": "UBB_3",
+              "col_label": "ASIC_2",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 3,
+              "col": 3,
+              "row_label": "UBB_3",
+              "col_label": "ASIC_3",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 3,
+              "col": 4,
+              "row_label": "UBB_3",
+              "col_label": "ASIC_4",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 3,
+              "col": 5,
+              "row_label": "UBB_3",
+              "col_label": "ASIC_5",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 3,
+              "col": 6,
+              "row_label": "UBB_3",
+              "col_label": "ASIC_6",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 3,
+              "col": 7,
+              "row_label": "UBB_3",
+              "col_label": "ASIC_7",
+              "value": 1,
+              "intensity": 1.0
+            },
+            {
+              "row": 3,
+              "col": 8,
+              "row_label": "UBB_3",
+              "col_label": "ASIC_8",
+              "value": 0,
+              "intensity": 0.0
+            }
+          ],
+          [
+            {
+              "row": 4,
+              "col": 1,
+              "row_label": "UBB_4",
+              "col_label": "ASIC_1",
+              "value": 1,
+              "intensity": 1.0
+            },
+            {
+              "row": 4,
+              "col": 2,
+              "row_label": "UBB_4",
+              "col_label": "ASIC_2",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 4,
+              "col": 3,
+              "row_label": "UBB_4",
+              "col_label": "ASIC_3",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 4,
+              "col": 4,
+              "row_label": "UBB_4",
+              "col_label": "ASIC_4",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 4,
+              "col": 5,
+              "row_label": "UBB_4",
+              "col_label": "ASIC_5",
+              "value": 1,
+              "intensity": 1.0
+            },
+            {
+              "row": 4,
+              "col": 6,
+              "row_label": "UBB_4",
+              "col_label": "ASIC_6",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 4,
+              "col": 7,
+              "row_label": "UBB_4",
+              "col_label": "ASIC_7",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 4,
+              "col": 8,
+              "row_label": "UBB_4",
+              "col_label": "ASIC_8",
+              "value": 0,
+              "intensity": 0.0
+            }
+          ]
+        ],
+        "max_value": 1,
+        "title": "UBB vs ASIC - Affected Units",
+        "row_count": 4,
+        "col_count": 8,
+        "row_labels": [
+          "UBB_1",
+          "UBB_2",
+          "UBB_3",
+          "UBB_4"
+        ],
+        "col_labels": [
+          "ASIC_1",
+          "ASIC_2",
+          "ASIC_3",
+          "ASIC_4",
+          "ASIC_5",
+          "ASIC_6",
+          "ASIC_7",
+          "ASIC_8"
+        ],
+        "clean_col_labels": [
+          "A1",
+          "A2",
+          "A3",
+          "A4",
+          "A5",
+          "A6",
+          "A7",
+          "A8"
+        ]
+      },
+      "heat_map_ubb_asic_failures": {
+        "matrix": [
+          [
+            {
+              "row": 1,
+              "col": 1,
+              "row_label": "UBB_1",
+              "col_label": "ASIC_1",
+              "value": 1,
+              "intensity": 0.5
+            },
+            {
+              "row": 1,
+              "col": 2,
+              "row_label": "UBB_1",
+              "col_label": "ASIC_2",
+              "value": 1,
+              "intensity": 0.5
+            },
+            {
+              "row": 1,
+              "col": 3,
+              "row_label": "UBB_1",
+              "col_label": "ASIC_3",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 1,
+              "col": 4,
+              "row_label": "UBB_1",
+              "col_label": "ASIC_4",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 1,
+              "col": 5,
+              "row_label": "UBB_1",
+              "col_label": "ASIC_5",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 1,
+              "col": 6,
+              "row_label": "UBB_1",
+              "col_label": "ASIC_6",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 1,
+              "col": 7,
+              "row_label": "UBB_1",
+              "col_label": "ASIC_7",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 1,
+              "col": 8,
+              "row_label": "UBB_1",
+              "col_label": "ASIC_8",
+              "value": 0,
+              "intensity": 0.0
+            }
+          ],
+          [
+            {
+              "row": 2,
+              "col": 1,
+              "row_label": "UBB_2",
+              "col_label": "ASIC_1",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 2,
+              "col": 2,
+              "row_label": "UBB_2",
+              "col_label": "ASIC_2",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 2,
+              "col": 3,
+              "row_label": "UBB_2",
+              "col_label": "ASIC_3",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 2,
+              "col": 4,
+              "row_label": "UBB_2",
+              "col_label": "ASIC_4",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 2,
+              "col": 5,
+              "row_label": "UBB_2",
+              "col_label": "ASIC_5",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 2,
+              "col": 6,
+              "row_label": "UBB_2",
+              "col_label": "ASIC_6",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 2,
+              "col": 7,
+              "row_label": "UBB_2",
+              "col_label": "ASIC_7",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 2,
+              "col": 8,
+              "row_label": "UBB_2",
+              "col_label": "ASIC_8",
+              "value": 0,
+              "intensity": 0.0
+            }
+          ],
+          [
+            {
+              "row": 3,
+              "col": 1,
+              "row_label": "UBB_3",
+              "col_label": "ASIC_1",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 3,
+              "col": 2,
+              "row_label": "UBB_3",
+              "col_label": "ASIC_2",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 3,
+              "col": 3,
+              "row_label": "UBB_3",
+              "col_label": "ASIC_3",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 3,
+              "col": 4,
+              "row_label": "UBB_3",
+              "col_label": "ASIC_4",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 3,
+              "col": 5,
+              "row_label": "UBB_3",
+              "col_label": "ASIC_5",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 3,
+              "col": 6,
+              "row_label": "UBB_3",
+              "col_label": "ASIC_6",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 3,
+              "col": 7,
+              "row_label": "UBB_3",
+              "col_label": "ASIC_7",
+              "value": 1,
+              "intensity": 0.5
+            },
+            {
+              "row": 3,
+              "col": 8,
+              "row_label": "UBB_3",
+              "col_label": "ASIC_8",
+              "value": 0,
+              "intensity": 0.0
+            }
+          ],
+          [
+            {
+              "row": 4,
+              "col": 1,
+              "row_label": "UBB_4",
+              "col_label": "ASIC_1",
+              "value": 2,
+              "intensity": 1.0
+            },
+            {
+              "row": 4,
+              "col": 2,
+              "row_label": "UBB_4",
+              "col_label": "ASIC_2",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 4,
+              "col": 3,
+              "row_label": "UBB_4",
+              "col_label": "ASIC_3",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 4,
+              "col": 4,
+              "row_label": "UBB_4",
+              "col_label": "ASIC_4",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 4,
+              "col": 5,
+              "row_label": "UBB_4",
+              "col_label": "ASIC_5",
+              "value": 2,
+              "intensity": 1.0
+            },
+            {
+              "row": 4,
+              "col": 6,
+              "row_label": "UBB_4",
+              "col_label": "ASIC_6",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 4,
+              "col": 7,
+              "row_label": "UBB_4",
+              "col_label": "ASIC_7",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 4,
+              "col": 8,
+              "row_label": "UBB_4",
+              "col_label": "ASIC_8",
+              "value": 0,
+              "intensity": 0.0
+            }
+          ]
+        ],
+        "max_value": 2,
+        "title": "UBB vs ASIC - Failure Counts",
+        "row_count": 4,
+        "col_count": 8,
+        "row_labels": [
+          "UBB_1",
+          "UBB_2",
+          "UBB_3",
+          "UBB_4"
+        ],
+        "col_labels": [
+          "ASIC_1",
+          "ASIC_2",
+          "ASIC_3",
+          "ASIC_4",
+          "ASIC_5",
+          "ASIC_6",
+          "ASIC_7",
+          "ASIC_8"
+        ],
+        "clean_col_labels": [
+          "A1",
+          "A2",
+          "A3",
+          "A4",
+          "A5",
+          "A6",
+          "A7",
+          "A8"
+        ]
+      },
+      "heat_map_asic_eth_units": {
+        "matrix": [
+          [
+            {
+              "row": 1,
+              "col": 1,
+              "row_label": "ASIC_1",
+              "col_label": "Eth_1",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 1,
+              "col": 3,
+              "row_label": "ASIC_1",
+              "col_label": "Eth_3",
+              "value": 1,
+              "intensity": 1.0
+            },
+            {
+              "row": 1,
+              "col": 7,
+              "row_label": "ASIC_1",
+              "col_label": "Eth_7",
+              "value": 1,
+              "intensity": 1.0
+            },
+            {
+              "row": 1,
+              "col": 9,
+              "row_label": "ASIC_1",
+              "col_label": "Eth_9",
+              "value": 1,
+              "intensity": 1.0
+            },
+            {
+              "row": 1,
+              "col": 11,
+              "row_label": "ASIC_1",
+              "col_label": "Eth_11",
+              "value": 0,
+              "intensity": 0.0
+            }
+          ],
+          [
+            {
+              "row": 2,
+              "col": 1,
+              "row_label": "ASIC_2",
+              "col_label": "Eth_1",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 2,
+              "col": 3,
+              "row_label": "ASIC_2",
+              "col_label": "Eth_3",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 2,
+              "col": 7,
+              "row_label": "ASIC_2",
+              "col_label": "Eth_7",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 2,
+              "col": 9,
+              "row_label": "ASIC_2",
+              "col_label": "Eth_9",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 2,
+              "col": 11,
+              "row_label": "ASIC_2",
+              "col_label": "Eth_11",
+              "value": 0,
+              "intensity": 0.0
+            }
+          ],
+          [
+            {
+              "row": 3,
+              "col": 1,
+              "row_label": "ASIC_3",
+              "col_label": "Eth_1",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 3,
+              "col": 3,
+              "row_label": "ASIC_3",
+              "col_label": "Eth_3",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 3,
+              "col": 7,
+              "row_label": "ASIC_3",
+              "col_label": "Eth_7",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 3,
+              "col": 9,
+              "row_label": "ASIC_3",
+              "col_label": "Eth_9",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 3,
+              "col": 11,
+              "row_label": "ASIC_3",
+              "col_label": "Eth_11",
+              "value": 0,
+              "intensity": 0.0
+            }
+          ],
+          [
+            {
+              "row": 4,
+              "col": 1,
+              "row_label": "ASIC_4",
+              "col_label": "Eth_1",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 4,
+              "col": 3,
+              "row_label": "ASIC_4",
+              "col_label": "Eth_3",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 4,
+              "col": 7,
+              "row_label": "ASIC_4",
+              "col_label": "Eth_7",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 4,
+              "col": 9,
+              "row_label": "ASIC_4",
+              "col_label": "Eth_9",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 4,
+              "col": 11,
+              "row_label": "ASIC_4",
+              "col_label": "Eth_11",
+              "value": 0,
+              "intensity": 0.0
+            }
+          ],
+          [
+            {
+              "row": 5,
+              "col": 1,
+              "row_label": "ASIC_5",
+              "col_label": "Eth_1",
+              "value": 1,
+              "intensity": 1.0
+            },
+            {
+              "row": 5,
+              "col": 3,
+              "row_label": "ASIC_5",
+              "col_label": "Eth_3",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 5,
+              "col": 7,
+              "row_label": "ASIC_5",
+              "col_label": "Eth_7",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 5,
+              "col": 9,
+              "row_label": "ASIC_5",
+              "col_label": "Eth_9",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 5,
+              "col": 11,
+              "row_label": "ASIC_5",
+              "col_label": "Eth_11",
+              "value": 0,
+              "intensity": 0.0
+            }
+          ],
+          [
+            {
+              "row": 6,
+              "col": 1,
+              "row_label": "ASIC_6",
+              "col_label": "Eth_1",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 6,
+              "col": 3,
+              "row_label": "ASIC_6",
+              "col_label": "Eth_3",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 6,
+              "col": 7,
+              "row_label": "ASIC_6",
+              "col_label": "Eth_7",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 6,
+              "col": 9,
+              "row_label": "ASIC_6",
+              "col_label": "Eth_9",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 6,
+              "col": 11,
+              "row_label": "ASIC_6",
+              "col_label": "Eth_11",
+              "value": 0,
+              "intensity": 0.0
+            }
+          ],
+          [
+            {
+              "row": 7,
+              "col": 1,
+              "row_label": "ASIC_7",
+              "col_label": "Eth_1",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 7,
+              "col": 3,
+              "row_label": "ASIC_7",
+              "col_label": "Eth_3",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 7,
+              "col": 7,
+              "row_label": "ASIC_7",
+              "col_label": "Eth_7",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 7,
+              "col": 9,
+              "row_label": "ASIC_7",
+              "col_label": "Eth_9",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 7,
+              "col": 11,
+              "row_label": "ASIC_7",
+              "col_label": "Eth_11",
+              "value": 1,
+              "intensity": 1.0
+            }
+          ],
+          [
+            {
+              "row": 8,
+              "col": 1,
+              "row_label": "ASIC_8",
+              "col_label": "Eth_1",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 8,
+              "col": 3,
+              "row_label": "ASIC_8",
+              "col_label": "Eth_3",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 8,
+              "col": 7,
+              "row_label": "ASIC_8",
+              "col_label": "Eth_7",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 8,
+              "col": 9,
+              "row_label": "ASIC_8",
+              "col_label": "Eth_9",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 8,
+              "col": 11,
+              "row_label": "ASIC_8",
+              "col_label": "Eth_11",
+              "value": 0,
+              "intensity": 0.0
+            }
+          ]
+        ],
+        "max_value": 1,
+        "title": "ASIC vs ETH - Affected Units",
+        "row_count": 8,
+        "col_count": 5,
+        "row_labels": [
+          "ASIC_1",
+          "ASIC_2",
+          "ASIC_3",
+          "ASIC_4",
+          "ASIC_5",
+          "ASIC_6",
+          "ASIC_7",
+          "ASIC_8"
+        ],
+        "col_labels": [
+          "Eth_1",
+          "Eth_3",
+          "Eth_7",
+          "Eth_9",
+          "Eth_11"
+        ],
+        "clean_col_labels": [
+          "1",
+          "3",
+          "7",
+          "9",
+          "11"
+        ]
+      },
+      "heat_map_asic_eth_failures": {
+        "matrix": [
+          [
+            {
+              "row": 1,
+              "col": 1,
+              "row_label": "ASIC_1",
+              "col_label": "Eth_1",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 1,
+              "col": 3,
+              "row_label": "ASIC_1",
+              "col_label": "Eth_3",
+              "value": 1,
+              "intensity": 1.0
+            },
+            {
+              "row": 1,
+              "col": 7,
+              "row_label": "ASIC_1",
+              "col_label": "Eth_7",
+              "value": 1,
+              "intensity": 1.0
+            },
+            {
+              "row": 1,
+              "col": 9,
+              "row_label": "ASIC_1",
+              "col_label": "Eth_9",
+              "value": 1,
+              "intensity": 1.0
+            },
+            {
+              "row": 1,
+              "col": 11,
+              "row_label": "ASIC_1",
+              "col_label": "Eth_11",
+              "value": 0,
+              "intensity": 0.0
+            }
+          ],
+          [
+            {
+              "row": 2,
+              "col": 1,
+              "row_label": "ASIC_2",
+              "col_label": "Eth_1",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 2,
+              "col": 3,
+              "row_label": "ASIC_2",
+              "col_label": "Eth_3",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 2,
+              "col": 7,
+              "row_label": "ASIC_2",
+              "col_label": "Eth_7",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 2,
+              "col": 9,
+              "row_label": "ASIC_2",
+              "col_label": "Eth_9",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 2,
+              "col": 11,
+              "row_label": "ASIC_2",
+              "col_label": "Eth_11",
+              "value": 0,
+              "intensity": 0.0
+            }
+          ],
+          [
+            {
+              "row": 3,
+              "col": 1,
+              "row_label": "ASIC_3",
+              "col_label": "Eth_1",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 3,
+              "col": 3,
+              "row_label": "ASIC_3",
+              "col_label": "Eth_3",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 3,
+              "col": 7,
+              "row_label": "ASIC_3",
+              "col_label": "Eth_7",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 3,
+              "col": 9,
+              "row_label": "ASIC_3",
+              "col_label": "Eth_9",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 3,
+              "col": 11,
+              "row_label": "ASIC_3",
+              "col_label": "Eth_11",
+              "value": 0,
+              "intensity": 0.0
+            }
+          ],
+          [
+            {
+              "row": 4,
+              "col": 1,
+              "row_label": "ASIC_4",
+              "col_label": "Eth_1",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 4,
+              "col": 3,
+              "row_label": "ASIC_4",
+              "col_label": "Eth_3",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 4,
+              "col": 7,
+              "row_label": "ASIC_4",
+              "col_label": "Eth_7",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 4,
+              "col": 9,
+              "row_label": "ASIC_4",
+              "col_label": "Eth_9",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 4,
+              "col": 11,
+              "row_label": "ASIC_4",
+              "col_label": "Eth_11",
+              "value": 0,
+              "intensity": 0.0
+            }
+          ],
+          [
+            {
+              "row": 5,
+              "col": 1,
+              "row_label": "ASIC_5",
+              "col_label": "Eth_1",
+              "value": 1,
+              "intensity": 1.0
+            },
+            {
+              "row": 5,
+              "col": 3,
+              "row_label": "ASIC_5",
+              "col_label": "Eth_3",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 5,
+              "col": 7,
+              "row_label": "ASIC_5",
+              "col_label": "Eth_7",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 5,
+              "col": 9,
+              "row_label": "ASIC_5",
+              "col_label": "Eth_9",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 5,
+              "col": 11,
+              "row_label": "ASIC_5",
+              "col_label": "Eth_11",
+              "value": 0,
+              "intensity": 0.0
+            }
+          ],
+          [
+            {
+              "row": 6,
+              "col": 1,
+              "row_label": "ASIC_6",
+              "col_label": "Eth_1",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 6,
+              "col": 3,
+              "row_label": "ASIC_6",
+              "col_label": "Eth_3",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 6,
+              "col": 7,
+              "row_label": "ASIC_6",
+              "col_label": "Eth_7",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 6,
+              "col": 9,
+              "row_label": "ASIC_6",
+              "col_label": "Eth_9",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 6,
+              "col": 11,
+              "row_label": "ASIC_6",
+              "col_label": "Eth_11",
+              "value": 0,
+              "intensity": 0.0
+            }
+          ],
+          [
+            {
+              "row": 7,
+              "col": 1,
+              "row_label": "ASIC_7",
+              "col_label": "Eth_1",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 7,
+              "col": 3,
+              "row_label": "ASIC_7",
+              "col_label": "Eth_3",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 7,
+              "col": 7,
+              "row_label": "ASIC_7",
+              "col_label": "Eth_7",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 7,
+              "col": 9,
+              "row_label": "ASIC_7",
+              "col_label": "Eth_9",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 7,
+              "col": 11,
+              "row_label": "ASIC_7",
+              "col_label": "Eth_11",
+              "value": 1,
+              "intensity": 1.0
+            }
+          ],
+          [
+            {
+              "row": 8,
+              "col": 1,
+              "row_label": "ASIC_8",
+              "col_label": "Eth_1",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 8,
+              "col": 3,
+              "row_label": "ASIC_8",
+              "col_label": "Eth_3",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 8,
+              "col": 7,
+              "row_label": "ASIC_8",
+              "col_label": "Eth_7",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 8,
+              "col": 9,
+              "row_label": "ASIC_8",
+              "col_label": "Eth_9",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 8,
+              "col": 11,
+              "row_label": "ASIC_8",
+              "col_label": "Eth_11",
+              "value": 0,
+              "intensity": 0.0
+            }
+          ]
+        ],
+        "max_value": 1,
+        "title": "ASIC vs ETH - Failure Counts",
+        "row_count": 8,
+        "col_count": 5,
+        "row_labels": [
+          "ASIC_1",
+          "ASIC_2",
+          "ASIC_3",
+          "ASIC_4",
+          "ASIC_5",
+          "ASIC_6",
+          "ASIC_7",
+          "ASIC_8"
+        ],
+        "col_labels": [
+          "Eth_1",
+          "Eth_3",
+          "Eth_7",
+          "Eth_9",
+          "Eth_11"
+        ],
+        "clean_col_labels": [
+          "1",
+          "3",
+          "7",
+          "9",
+          "11"
+        ]
+      },
+      "heat_map_asic_controller_units": {
+        "matrix": [],
+        "max_value": 0,
+        "title": "ASIC vs Controller - Affected Units",
+        "row_count": 0,
+        "col_count": 0,
+        "row_labels": [],
+        "col_labels": [],
+        "clean_col_labels": []
+      },
+      "heat_map_asic_controller_failures": {
+        "matrix": [],
+        "max_value": 0,
+        "title": "ASIC vs Controller - Failure Counts",
+        "row_count": 0,
+        "col_count": 0,
+        "row_labels": [],
+        "col_labels": [],
+        "clean_col_labels": []
+      },
+      "heat_map_ubb_controller_units": {
+        "matrix": [],
+        "max_value": 0,
+        "title": "UBB vs Controller - Affected Units",
+        "row_count": 0,
+        "col_count": 0,
+        "row_labels": [],
+        "col_labels": [],
+        "clean_col_labels": []
+      },
+      "heat_map_ubb_controller_failures": {
+        "matrix": [],
+        "max_value": 0,
+        "title": "UBB vs Controller - Failure Counts",
+        "row_count": 0,
+        "col_count": 0,
+        "row_labels": [],
+        "col_labels": [],
+        "clean_col_labels": []
+      },
+      "heat_map_ubb_eth_units": {
+        "matrix": [
+          [
+            {
+              "row": 1,
+              "col": 1,
+              "row_label": "UBB_1",
+              "col_label": "Eth_1",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 1,
+              "col": 3,
+              "row_label": "UBB_1",
+              "col_label": "Eth_3",
+              "value": 1,
+              "intensity": 1.0
+            },
+            {
+              "row": 1,
+              "col": 7,
+              "row_label": "UBB_1",
+              "col_label": "Eth_7",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 1,
+              "col": 9,
+              "row_label": "UBB_1",
+              "col_label": "Eth_9",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 1,
+              "col": 11,
+              "row_label": "UBB_1",
+              "col_label": "Eth_11",
+              "value": 0,
+              "intensity": 0.0
+            }
+          ],
+          [
+            {
+              "row": 2,
+              "col": 1,
+              "row_label": "UBB_2",
+              "col_label": "Eth_1",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 2,
+              "col": 3,
+              "row_label": "UBB_2",
+              "col_label": "Eth_3",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 2,
+              "col": 7,
+              "row_label": "UBB_2",
+              "col_label": "Eth_7",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 2,
+              "col": 9,
+              "row_label": "UBB_2",
+              "col_label": "Eth_9",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 2,
+              "col": 11,
+              "row_label": "UBB_2",
+              "col_label": "Eth_11",
+              "value": 0,
+              "intensity": 0.0
+            }
+          ],
+          [
+            {
+              "row": 3,
+              "col": 1,
+              "row_label": "UBB_3",
+              "col_label": "Eth_1",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 3,
+              "col": 3,
+              "row_label": "UBB_3",
+              "col_label": "Eth_3",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 3,
+              "col": 7,
+              "row_label": "UBB_3",
+              "col_label": "Eth_7",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 3,
+              "col": 9,
+              "row_label": "UBB_3",
+              "col_label": "Eth_9",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 3,
+              "col": 11,
+              "row_label": "UBB_3",
+              "col_label": "Eth_11",
+              "value": 1,
+              "intensity": 1.0
+            }
+          ],
+          [
+            {
+              "row": 4,
+              "col": 1,
+              "row_label": "UBB_4",
+              "col_label": "Eth_1",
+              "value": 1,
+              "intensity": 1.0
+            },
+            {
+              "row": 4,
+              "col": 3,
+              "row_label": "UBB_4",
+              "col_label": "Eth_3",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 4,
+              "col": 7,
+              "row_label": "UBB_4",
+              "col_label": "Eth_7",
+              "value": 1,
+              "intensity": 1.0
+            },
+            {
+              "row": 4,
+              "col": 9,
+              "row_label": "UBB_4",
+              "col_label": "Eth_9",
+              "value": 1,
+              "intensity": 1.0
+            },
+            {
+              "row": 4,
+              "col": 11,
+              "row_label": "UBB_4",
+              "col_label": "Eth_11",
+              "value": 0,
+              "intensity": 0.0
+            }
+          ]
+        ],
+        "max_value": 1,
+        "title": "UBB vs ETH - Affected Units",
+        "row_count": 4,
+        "col_count": 5,
+        "row_labels": [
+          "UBB_1",
+          "UBB_2",
+          "UBB_3",
+          "UBB_4"
+        ],
+        "col_labels": [
+          "Eth_1",
+          "Eth_3",
+          "Eth_7",
+          "Eth_9",
+          "Eth_11"
+        ],
+        "clean_col_labels": [
+          "1",
+          "3",
+          "7",
+          "9",
+          "11"
+        ]
+      },
+      "heat_map_ubb_eth_failures": {
+        "matrix": [
+          [
+            {
+              "row": 1,
+              "col": 1,
+              "row_label": "UBB_1",
+              "col_label": "Eth_1",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 1,
+              "col": 3,
+              "row_label": "UBB_1",
+              "col_label": "Eth_3",
+              "value": 1,
+              "intensity": 1.0
+            },
+            {
+              "row": 1,
+              "col": 7,
+              "row_label": "UBB_1",
+              "col_label": "Eth_7",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 1,
+              "col": 9,
+              "row_label": "UBB_1",
+              "col_label": "Eth_9",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 1,
+              "col": 11,
+              "row_label": "UBB_1",
+              "col_label": "Eth_11",
+              "value": 0,
+              "intensity": 0.0
+            }
+          ],
+          [
+            {
+              "row": 2,
+              "col": 1,
+              "row_label": "UBB_2",
+              "col_label": "Eth_1",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 2,
+              "col": 3,
+              "row_label": "UBB_2",
+              "col_label": "Eth_3",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 2,
+              "col": 7,
+              "row_label": "UBB_2",
+              "col_label": "Eth_7",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 2,
+              "col": 9,
+              "row_label": "UBB_2",
+              "col_label": "Eth_9",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 2,
+              "col": 11,
+              "row_label": "UBB_2",
+              "col_label": "Eth_11",
+              "value": 0,
+              "intensity": 0.0
+            }
+          ],
+          [
+            {
+              "row": 3,
+              "col": 1,
+              "row_label": "UBB_3",
+              "col_label": "Eth_1",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 3,
+              "col": 3,
+              "row_label": "UBB_3",
+              "col_label": "Eth_3",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 3,
+              "col": 7,
+              "row_label": "UBB_3",
+              "col_label": "Eth_7",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 3,
+              "col": 9,
+              "row_label": "UBB_3",
+              "col_label": "Eth_9",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 3,
+              "col": 11,
+              "row_label": "UBB_3",
+              "col_label": "Eth_11",
+              "value": 1,
+              "intensity": 1.0
+            }
+          ],
+          [
+            {
+              "row": 4,
+              "col": 1,
+              "row_label": "UBB_4",
+              "col_label": "Eth_1",
+              "value": 1,
+              "intensity": 1.0
+            },
+            {
+              "row": 4,
+              "col": 3,
+              "row_label": "UBB_4",
+              "col_label": "Eth_3",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 4,
+              "col": 7,
+              "row_label": "UBB_4",
+              "col_label": "Eth_7",
+              "value": 1,
+              "intensity": 1.0
+            },
+            {
+              "row": 4,
+              "col": 9,
+              "row_label": "UBB_4",
+              "col_label": "Eth_9",
+              "value": 1,
+              "intensity": 1.0
+            },
+            {
+              "row": 4,
+              "col": 11,
+              "row_label": "UBB_4",
+              "col_label": "Eth_11",
+              "value": 0,
+              "intensity": 0.0
+            }
+          ]
+        ],
+        "max_value": 1,
+        "title": "UBB vs ETH - Failure Counts",
+        "row_count": 4,
+        "col_count": 5,
+        "row_labels": [
+          "UBB_1",
+          "UBB_2",
+          "UBB_3",
+          "UBB_4"
+        ],
+        "col_labels": [
+          "Eth_1",
+          "Eth_3",
+          "Eth_7",
+          "Eth_9",
+          "Eth_11"
+        ],
+        "clean_col_labels": [
+          "1",
+          "3",
+          "7",
+          "9",
+          "11"
+        ]
+      },
+      "heat_map_ctrl_eth_units": {
+        "matrix": [],
+        "max_value": 0,
+        "title": "Controller vs ETH - Affected Units",
+        "row_count": 0,
+        "col_count": 0,
+        "row_labels": [],
+        "col_labels": [],
+        "clean_col_labels": []
+      },
+      "heat_map_ctrl_eth_failures": {
+        "matrix": [],
+        "max_value": 0,
+        "title": "Controller vs ETH - Failure Counts",
+        "row_count": 0,
+        "col_count": 0,
+        "row_labels": [],
+        "col_labels": [],
+        "clean_col_labels": []
+      },
+      "visual_cards": [
+        {
+          "title": "Total Units: 4",
+          "count": 4,
+          "severity": "high",
+          "icon": "\ud83d\udcca",
+          "color": "#3498db"
+        },
+        {
+          "title": "Total Failures: 7",
+          "count": 7,
+          "severity": "medium",
+          "icon": "\u26a0\ufe0f",
+          "color": "#e74c3c"
+        },
+        {
+          "title": "UBB_4 + ASIC_1",
+          "count": 2,
+          "severity": "medium",
+          "icon": "\ud83d\udd0c",
+          "color": "#f39c12"
+        },
+        {
+          "title": "UBB_4 + ASIC_5",
+          "count": 2,
+          "severity": "medium",
+          "icon": "\ud83d\udd0c",
+          "color": "#f39c12"
+        },
+        {
+          "title": "UBB_1 + ASIC_2",
+          "count": 1,
+          "severity": "low",
+          "icon": "\ud83d\udd0c",
+          "color": "#2ecc71"
+        },
+        {
+          "title": "ASIC_1 + Eth_7",
+          "count": 1,
+          "severity": "low",
+          "icon": "\ud83c\udf10",
+          "color": "#2ecc71"
+        }
+      ],
+      "summary_insights": [
+        {
+          "icon": "\ud83d\udea8",
+          "title": "UBB 4 Critical",
+          "description": "UBB 4 shows 57% failure rate (4 failures) - needs immediate attention",
+          "severity": "extreme"
+        },
+        {
+          "icon": "\ud83d\udd25",
+          "title": "ASIC 1 Critical",
+          "description": "ASIC 1 shows 43% failure rate (3 failures) - focus required",
+          "severity": "critical"
+        }
+      ]
+    },
+    {
+      "jira_entry": "QUAN-611",
+      "jira_summary": "",
+      "affected_units": 2,
+      "failure_counts": 0,
+      "failure_rate": "3.51%",
+      "description": "System failed to boot when the specific UBB is installed in the system",
+      "category": "other",
+      "has_test_data": true,
+      "notes": "",
+      "error_types": [
+        "From QUAN-611"
+      ],
+      "unique_serials_affected": 2,
+      "apy_affected_units": 2,
+      "ubb_distribution_units": {
+        "UBB_1": 0,
+        "UBB_2": 0,
+        "UBB_3": 0,
+        "UBB_4": 0
+      },
+      "ubb_distribution_failures": {
+        "UBB_1": 0,
+        "UBB_2": 0,
+        "UBB_3": 0,
+        "UBB_4": 0
+      },
+      "ubb_percentages_units": {
+        "UBB_1": 0,
+        "UBB_2": 0,
+        "UBB_3": 0,
+        "UBB_4": 0
+      },
+      "ubb_percentages_failures": {
+        "UBB_1": 0,
+        "UBB_2": 0,
+        "UBB_3": 0,
+        "UBB_4": 0
+      },
+      "ubb_sorted_keys": [
+        "UBB_1",
+        "UBB_2",
+        "UBB_3",
+        "UBB_4"
+      ],
+      "asic_distribution_units": {
+        "ASIC_1": 0,
+        "ASIC_2": 0,
+        "ASIC_3": 0,
+        "ASIC_4": 0,
+        "ASIC_5": 0,
+        "ASIC_6": 0,
+        "ASIC_7": 0,
+        "ASIC_8": 0
+      },
+      "asic_distribution_failures": {
+        "ASIC_1": 0,
+        "ASIC_2": 0,
+        "ASIC_3": 0,
+        "ASIC_4": 0,
+        "ASIC_5": 0,
+        "ASIC_6": 0,
+        "ASIC_7": 0,
+        "ASIC_8": 0
+      },
+      "asic_percentages_units": {
+        "ASIC_1": 0,
+        "ASIC_2": 0,
+        "ASIC_3": 0,
+        "ASIC_4": 0,
+        "ASIC_5": 0,
+        "ASIC_6": 0,
+        "ASIC_7": 0,
+        "ASIC_8": 0
+      },
+      "asic_percentages_failures": {
+        "ASIC_1": 0,
+        "ASIC_2": 0,
+        "ASIC_3": 0,
+        "ASIC_4": 0,
+        "ASIC_5": 0,
+        "ASIC_6": 0,
+        "ASIC_7": 0,
+        "ASIC_8": 0
+      },
+      "asic_sorted_keys": [
+        "ASIC_1",
+        "ASIC_2",
+        "ASIC_3",
+        "ASIC_4",
+        "ASIC_5",
+        "ASIC_6",
+        "ASIC_7",
+        "ASIC_8"
+      ],
+      "controller_distribution_units": {},
+      "controller_distribution_failures": {},
+      "controller_percentages_units": {},
+      "controller_percentages_failures": {},
+      "controller_sorted_keys": [],
+      "eth_distribution_units": {},
+      "eth_distribution_failures": {},
+      "eth_percentages_units": {},
+      "eth_percentages_failures": {},
+      "eth_sorted_keys": [],
+      "heat_map_ubb_asic_units": {
+        "matrix": [
+          [
+            {
+              "row": 1,
+              "col": 1,
+              "row_label": "UBB_1",
+              "col_label": "ASIC_1",
+              "value": 0,
+              "intensity": 0
+            },
+            {
+              "row": 1,
+              "col": 2,
+              "row_label": "UBB_1",
+              "col_label": "ASIC_2",
+              "value": 0,
+              "intensity": 0
+            },
+            {
+              "row": 1,
+              "col": 3,
+              "row_label": "UBB_1",
+              "col_label": "ASIC_3",
+              "value": 0,
+              "intensity": 0
+            },
+            {
+              "row": 1,
+              "col": 4,
+              "row_label": "UBB_1",
+              "col_label": "ASIC_4",
+              "value": 0,
+              "intensity": 0
+            },
+            {
+              "row": 1,
+              "col": 5,
+              "row_label": "UBB_1",
+              "col_label": "ASIC_5",
+              "value": 0,
+              "intensity": 0
+            },
+            {
+              "row": 1,
+              "col": 6,
+              "row_label": "UBB_1",
+              "col_label": "ASIC_6",
+              "value": 0,
+              "intensity": 0
+            },
+            {
+              "row": 1,
+              "col": 7,
+              "row_label": "UBB_1",
+              "col_label": "ASIC_7",
+              "value": 0,
+              "intensity": 0
+            },
+            {
+              "row": 1,
+              "col": 8,
+              "row_label": "UBB_1",
+              "col_label": "ASIC_8",
+              "value": 0,
+              "intensity": 0
+            }
+          ],
+          [
+            {
+              "row": 2,
+              "col": 1,
+              "row_label": "UBB_2",
+              "col_label": "ASIC_1",
+              "value": 0,
+              "intensity": 0
+            },
+            {
+              "row": 2,
+              "col": 2,
+              "row_label": "UBB_2",
+              "col_label": "ASIC_2",
+              "value": 0,
+              "intensity": 0
+            },
+            {
+              "row": 2,
+              "col": 3,
+              "row_label": "UBB_2",
+              "col_label": "ASIC_3",
+              "value": 0,
+              "intensity": 0
+            },
+            {
+              "row": 2,
+              "col": 4,
+              "row_label": "UBB_2",
+              "col_label": "ASIC_4",
+              "value": 0,
+              "intensity": 0
+            },
+            {
+              "row": 2,
+              "col": 5,
+              "row_label": "UBB_2",
+              "col_label": "ASIC_5",
+              "value": 0,
+              "intensity": 0
+            },
+            {
+              "row": 2,
+              "col": 6,
+              "row_label": "UBB_2",
+              "col_label": "ASIC_6",
+              "value": 0,
+              "intensity": 0
+            },
+            {
+              "row": 2,
+              "col": 7,
+              "row_label": "UBB_2",
+              "col_label": "ASIC_7",
+              "value": 0,
+              "intensity": 0
+            },
+            {
+              "row": 2,
+              "col": 8,
+              "row_label": "UBB_2",
+              "col_label": "ASIC_8",
+              "value": 0,
+              "intensity": 0
+            }
+          ],
+          [
+            {
+              "row": 3,
+              "col": 1,
+              "row_label": "UBB_3",
+              "col_label": "ASIC_1",
+              "value": 0,
+              "intensity": 0
+            },
+            {
+              "row": 3,
+              "col": 2,
+              "row_label": "UBB_3",
+              "col_label": "ASIC_2",
+              "value": 0,
+              "intensity": 0
+            },
+            {
+              "row": 3,
+              "col": 3,
+              "row_label": "UBB_3",
+              "col_label": "ASIC_3",
+              "value": 0,
+              "intensity": 0
+            },
+            {
+              "row": 3,
+              "col": 4,
+              "row_label": "UBB_3",
+              "col_label": "ASIC_4",
+              "value": 0,
+              "intensity": 0
+            },
+            {
+              "row": 3,
+              "col": 5,
+              "row_label": "UBB_3",
+              "col_label": "ASIC_5",
+              "value": 0,
+              "intensity": 0
+            },
+            {
+              "row": 3,
+              "col": 6,
+              "row_label": "UBB_3",
+              "col_label": "ASIC_6",
+              "value": 0,
+              "intensity": 0
+            },
+            {
+              "row": 3,
+              "col": 7,
+              "row_label": "UBB_3",
+              "col_label": "ASIC_7",
+              "value": 0,
+              "intensity": 0
+            },
+            {
+              "row": 3,
+              "col": 8,
+              "row_label": "UBB_3",
+              "col_label": "ASIC_8",
+              "value": 0,
+              "intensity": 0
+            }
+          ],
+          [
+            {
+              "row": 4,
+              "col": 1,
+              "row_label": "UBB_4",
+              "col_label": "ASIC_1",
+              "value": 0,
+              "intensity": 0
+            },
+            {
+              "row": 4,
+              "col": 2,
+              "row_label": "UBB_4",
+              "col_label": "ASIC_2",
+              "value": 0,
+              "intensity": 0
+            },
+            {
+              "row": 4,
+              "col": 3,
+              "row_label": "UBB_4",
+              "col_label": "ASIC_3",
+              "value": 0,
+              "intensity": 0
+            },
+            {
+              "row": 4,
+              "col": 4,
+              "row_label": "UBB_4",
+              "col_label": "ASIC_4",
+              "value": 0,
+              "intensity": 0
+            },
+            {
+              "row": 4,
+              "col": 5,
+              "row_label": "UBB_4",
+              "col_label": "ASIC_5",
+              "value": 0,
+              "intensity": 0
+            },
+            {
+              "row": 4,
+              "col": 6,
+              "row_label": "UBB_4",
+              "col_label": "ASIC_6",
+              "value": 0,
+              "intensity": 0
+            },
+            {
+              "row": 4,
+              "col": 7,
+              "row_label": "UBB_4",
+              "col_label": "ASIC_7",
+              "value": 0,
+              "intensity": 0
+            },
+            {
+              "row": 4,
+              "col": 8,
+              "row_label": "UBB_4",
+              "col_label": "ASIC_8",
+              "value": 0,
+              "intensity": 0
+            }
+          ]
+        ],
+        "max_value": 0,
+        "title": "UBB vs ASIC - Affected Units",
+        "row_count": 4,
+        "col_count": 8,
+        "row_labels": [
+          "UBB_1",
+          "UBB_2",
+          "UBB_3",
+          "UBB_4"
+        ],
+        "col_labels": [
+          "ASIC_1",
+          "ASIC_2",
+          "ASIC_3",
+          "ASIC_4",
+          "ASIC_5",
+          "ASIC_6",
+          "ASIC_7",
+          "ASIC_8"
+        ],
+        "clean_col_labels": [
+          "A1",
+          "A2",
+          "A3",
+          "A4",
+          "A5",
+          "A6",
+          "A7",
+          "A8"
+        ]
+      },
+      "heat_map_ubb_asic_failures": {
+        "matrix": [
+          [
+            {
+              "row": 1,
+              "col": 1,
+              "row_label": "UBB_1",
+              "col_label": "ASIC_1",
+              "value": 0,
+              "intensity": 0
+            },
+            {
+              "row": 1,
+              "col": 2,
+              "row_label": "UBB_1",
+              "col_label": "ASIC_2",
+              "value": 0,
+              "intensity": 0
+            },
+            {
+              "row": 1,
+              "col": 3,
+              "row_label": "UBB_1",
+              "col_label": "ASIC_3",
+              "value": 0,
+              "intensity": 0
+            },
+            {
+              "row": 1,
+              "col": 4,
+              "row_label": "UBB_1",
+              "col_label": "ASIC_4",
+              "value": 0,
+              "intensity": 0
+            },
+            {
+              "row": 1,
+              "col": 5,
+              "row_label": "UBB_1",
+              "col_label": "ASIC_5",
+              "value": 0,
+              "intensity": 0
+            },
+            {
+              "row": 1,
+              "col": 6,
+              "row_label": "UBB_1",
+              "col_label": "ASIC_6",
+              "value": 0,
+              "intensity": 0
+            },
+            {
+              "row": 1,
+              "col": 7,
+              "row_label": "UBB_1",
+              "col_label": "ASIC_7",
+              "value": 0,
+              "intensity": 0
+            },
+            {
+              "row": 1,
+              "col": 8,
+              "row_label": "UBB_1",
+              "col_label": "ASIC_8",
+              "value": 0,
+              "intensity": 0
+            }
+          ],
+          [
+            {
+              "row": 2,
+              "col": 1,
+              "row_label": "UBB_2",
+              "col_label": "ASIC_1",
+              "value": 0,
+              "intensity": 0
+            },
+            {
+              "row": 2,
+              "col": 2,
+              "row_label": "UBB_2",
+              "col_label": "ASIC_2",
+              "value": 0,
+              "intensity": 0
+            },
+            {
+              "row": 2,
+              "col": 3,
+              "row_label": "UBB_2",
+              "col_label": "ASIC_3",
+              "value": 0,
+              "intensity": 0
+            },
+            {
+              "row": 2,
+              "col": 4,
+              "row_label": "UBB_2",
+              "col_label": "ASIC_4",
+              "value": 0,
+              "intensity": 0
+            },
+            {
+              "row": 2,
+              "col": 5,
+              "row_label": "UBB_2",
+              "col_label": "ASIC_5",
+              "value": 0,
+              "intensity": 0
+            },
+            {
+              "row": 2,
+              "col": 6,
+              "row_label": "UBB_2",
+              "col_label": "ASIC_6",
+              "value": 0,
+              "intensity": 0
+            },
+            {
+              "row": 2,
+              "col": 7,
+              "row_label": "UBB_2",
+              "col_label": "ASIC_7",
+              "value": 0,
+              "intensity": 0
+            },
+            {
+              "row": 2,
+              "col": 8,
+              "row_label": "UBB_2",
+              "col_label": "ASIC_8",
+              "value": 0,
+              "intensity": 0
+            }
+          ],
+          [
+            {
+              "row": 3,
+              "col": 1,
+              "row_label": "UBB_3",
+              "col_label": "ASIC_1",
+              "value": 0,
+              "intensity": 0
+            },
+            {
+              "row": 3,
+              "col": 2,
+              "row_label": "UBB_3",
+              "col_label": "ASIC_2",
+              "value": 0,
+              "intensity": 0
+            },
+            {
+              "row": 3,
+              "col": 3,
+              "row_label": "UBB_3",
+              "col_label": "ASIC_3",
+              "value": 0,
+              "intensity": 0
+            },
+            {
+              "row": 3,
+              "col": 4,
+              "row_label": "UBB_3",
+              "col_label": "ASIC_4",
+              "value": 0,
+              "intensity": 0
+            },
+            {
+              "row": 3,
+              "col": 5,
+              "row_label": "UBB_3",
+              "col_label": "ASIC_5",
+              "value": 0,
+              "intensity": 0
+            },
+            {
+              "row": 3,
+              "col": 6,
+              "row_label": "UBB_3",
+              "col_label": "ASIC_6",
+              "value": 0,
+              "intensity": 0
+            },
+            {
+              "row": 3,
+              "col": 7,
+              "row_label": "UBB_3",
+              "col_label": "ASIC_7",
+              "value": 0,
+              "intensity": 0
+            },
+            {
+              "row": 3,
+              "col": 8,
+              "row_label": "UBB_3",
+              "col_label": "ASIC_8",
+              "value": 0,
+              "intensity": 0
+            }
+          ],
+          [
+            {
+              "row": 4,
+              "col": 1,
+              "row_label": "UBB_4",
+              "col_label": "ASIC_1",
+              "value": 0,
+              "intensity": 0
+            },
+            {
+              "row": 4,
+              "col": 2,
+              "row_label": "UBB_4",
+              "col_label": "ASIC_2",
+              "value": 0,
+              "intensity": 0
+            },
+            {
+              "row": 4,
+              "col": 3,
+              "row_label": "UBB_4",
+              "col_label": "ASIC_3",
+              "value": 0,
+              "intensity": 0
+            },
+            {
+              "row": 4,
+              "col": 4,
+              "row_label": "UBB_4",
+              "col_label": "ASIC_4",
+              "value": 0,
+              "intensity": 0
+            },
+            {
+              "row": 4,
+              "col": 5,
+              "row_label": "UBB_4",
+              "col_label": "ASIC_5",
+              "value": 0,
+              "intensity": 0
+            },
+            {
+              "row": 4,
+              "col": 6,
+              "row_label": "UBB_4",
+              "col_label": "ASIC_6",
+              "value": 0,
+              "intensity": 0
+            },
+            {
+              "row": 4,
+              "col": 7,
+              "row_label": "UBB_4",
+              "col_label": "ASIC_7",
+              "value": 0,
+              "intensity": 0
+            },
+            {
+              "row": 4,
+              "col": 8,
+              "row_label": "UBB_4",
+              "col_label": "ASIC_8",
+              "value": 0,
+              "intensity": 0
+            }
+          ]
+        ],
+        "max_value": 0,
+        "title": "UBB vs ASIC - Failure Counts",
+        "row_count": 4,
+        "col_count": 8,
+        "row_labels": [
+          "UBB_1",
+          "UBB_2",
+          "UBB_3",
+          "UBB_4"
+        ],
+        "col_labels": [
+          "ASIC_1",
+          "ASIC_2",
+          "ASIC_3",
+          "ASIC_4",
+          "ASIC_5",
+          "ASIC_6",
+          "ASIC_7",
+          "ASIC_8"
+        ],
+        "clean_col_labels": [
+          "A1",
+          "A2",
+          "A3",
+          "A4",
+          "A5",
+          "A6",
+          "A7",
+          "A8"
+        ]
+      },
+      "heat_map_asic_eth_units": {
+        "matrix": [],
+        "max_value": 0,
+        "title": "ASIC vs ETH - Affected Units",
+        "row_count": 0,
+        "col_count": 0,
+        "row_labels": [],
+        "col_labels": [],
+        "clean_col_labels": []
+      },
+      "heat_map_asic_eth_failures": {
+        "matrix": [],
+        "max_value": 0,
+        "title": "ASIC vs ETH - Failure Counts",
+        "row_count": 0,
+        "col_count": 0,
+        "row_labels": [],
+        "col_labels": [],
+        "clean_col_labels": []
+      },
+      "heat_map_asic_controller_units": {
+        "matrix": [],
+        "max_value": 0,
+        "title": "ASIC vs Controller - Affected Units",
+        "row_count": 0,
+        "col_count": 0,
+        "row_labels": [],
+        "col_labels": [],
+        "clean_col_labels": []
+      },
+      "heat_map_asic_controller_failures": {
+        "matrix": [],
+        "max_value": 0,
+        "title": "ASIC vs Controller - Failure Counts",
+        "row_count": 0,
+        "col_count": 0,
+        "row_labels": [],
+        "col_labels": [],
+        "clean_col_labels": []
+      },
+      "heat_map_ubb_controller_units": {
+        "matrix": [],
+        "max_value": 0,
+        "title": "UBB vs Controller - Affected Units",
+        "row_count": 0,
+        "col_count": 0,
+        "row_labels": [],
+        "col_labels": [],
+        "clean_col_labels": []
+      },
+      "heat_map_ubb_controller_failures": {
+        "matrix": [],
+        "max_value": 0,
+        "title": "UBB vs Controller - Failure Counts",
+        "row_count": 0,
+        "col_count": 0,
+        "row_labels": [],
+        "col_labels": [],
+        "clean_col_labels": []
+      },
+      "heat_map_ubb_eth_units": {
+        "matrix": [],
+        "max_value": 0,
+        "title": "UBB vs ETH - Affected Units",
+        "row_count": 0,
+        "col_count": 0,
+        "row_labels": [],
+        "col_labels": [],
+        "clean_col_labels": []
+      },
+      "heat_map_ubb_eth_failures": {
+        "matrix": [],
+        "max_value": 0,
+        "title": "UBB vs ETH - Failure Counts",
+        "row_count": 0,
+        "col_count": 0,
+        "row_labels": [],
+        "col_labels": [],
+        "clean_col_labels": []
+      },
+      "heat_map_ctrl_eth_units": {
+        "matrix": [],
+        "max_value": 0,
+        "title": "Controller vs ETH - Affected Units",
+        "row_count": 0,
+        "col_count": 0,
+        "row_labels": [],
+        "col_labels": [],
+        "clean_col_labels": []
+      },
+      "heat_map_ctrl_eth_failures": {
+        "matrix": [],
+        "max_value": 0,
+        "title": "Controller vs ETH - Failure Counts",
+        "row_count": 0,
+        "col_count": 0,
+        "row_labels": [],
+        "col_labels": [],
+        "clean_col_labels": []
+      },
+      "visual_cards": [
+        {
+          "title": "Total Units: 2",
+          "count": 2,
+          "severity": "high",
+          "icon": "\ud83d\udcca",
+          "color": "#3498db"
+        },
+        {
+          "title": "Total Failures: 0",
+          "count": 0,
+          "severity": "medium",
+          "icon": "\u26a0\ufe0f",
+          "color": "#e74c3c"
+        }
+      ],
+      "summary_insights": [
+        {
+          "icon": "\u2705",
+          "title": "Balanced Distribution",
+          "description": "No single component shows >30% failure concentration - failures distributed evenly",
+          "severity": "good"
+        }
+      ]
+    },
+    {
+      "jira_entry": "QUAN-519",
+      "jira_summary": "DDR Training EC failure at 14G",
+      "affected_units": 2,
+      "failure_counts": 6,
+      "failure_rate": "3.51%",
+      "description": "DDR Training EC failure at 14G",
+      "category": "ddr",
+      "has_test_data": true,
+      "notes": "8 units affected since UBB Rev B build. Most failure are see on UBB1-Ctrl H and UBB2-Ctrl F.\nJira History: QUAN-364 - failure rate with MRISC FW 2.9 down to ~1% (included in TT FW 18.7.01).",
+      "error_types": [
+        "From QUAN-519"
+      ],
+      "unique_serials_affected": 2,
+      "apy_affected_units": 2,
+      "ubb_distribution_units": {
+        "UBB_1": 1,
+        "UBB_2": 0,
+        "UBB_3": 1,
+        "UBB_4": 0
+      },
+      "ubb_distribution_failures": {
+        "UBB_1": 5,
+        "UBB_2": 0,
+        "UBB_3": 1,
+        "UBB_4": 0
+      },
+      "ubb_percentages_units": {
+        "UBB_1": 50.0,
+        "UBB_2": 0.0,
+        "UBB_3": 50.0,
+        "UBB_4": 0.0
+      },
+      "ubb_percentages_failures": {
+        "UBB_1": 83.3,
+        "UBB_2": 0.0,
+        "UBB_3": 16.7,
+        "UBB_4": 0.0
+      },
+      "ubb_sorted_keys": [
+        "UBB_1",
+        "UBB_2",
+        "UBB_3",
+        "UBB_4"
+      ],
+      "asic_distribution_units": {
+        "ASIC_1": 0,
+        "ASIC_2": 0,
+        "ASIC_3": 1,
+        "ASIC_4": 1,
+        "ASIC_5": 0,
+        "ASIC_6": 0,
+        "ASIC_7": 0,
+        "ASIC_8": 0
+      },
+      "asic_distribution_failures": {
+        "ASIC_1": 0,
+        "ASIC_2": 0,
+        "ASIC_3": 1,
+        "ASIC_4": 5,
+        "ASIC_5": 0,
+        "ASIC_6": 0,
+        "ASIC_7": 0,
+        "ASIC_8": 0
+      },
+      "asic_percentages_units": {
+        "ASIC_1": 0.0,
+        "ASIC_2": 0.0,
+        "ASIC_3": 50.0,
+        "ASIC_4": 50.0,
+        "ASIC_5": 0.0,
+        "ASIC_6": 0.0,
+        "ASIC_7": 0.0,
+        "ASIC_8": 0.0
+      },
+      "asic_percentages_failures": {
+        "ASIC_1": 0.0,
+        "ASIC_2": 0.0,
+        "ASIC_3": 16.7,
+        "ASIC_4": 83.3,
+        "ASIC_5": 0.0,
+        "ASIC_6": 0.0,
+        "ASIC_7": 0.0,
+        "ASIC_8": 0.0
+      },
+      "asic_sorted_keys": [
+        "ASIC_1",
+        "ASIC_2",
+        "ASIC_3",
+        "ASIC_4",
+        "ASIC_5",
+        "ASIC_6",
+        "ASIC_7",
+        "ASIC_8"
+      ],
+      "controller_distribution_units": {
+        "Ctrl_H": 1,
+        "Ctrl_C": 1
+      },
+      "controller_distribution_failures": {
+        "Ctrl_H": 5,
+        "Ctrl_C": 1
+      },
+      "controller_percentages_units": {
+        "Ctrl_H": 50.0,
+        "Ctrl_C": 50.0
+      },
+      "controller_percentages_failures": {
+        "Ctrl_H": 83.3,
+        "Ctrl_C": 16.7
+      },
+      "controller_sorted_keys": [
+        "Ctrl_C",
+        "Ctrl_H"
+      ],
+      "eth_distribution_units": {},
+      "eth_distribution_failures": {},
+      "eth_percentages_units": {},
+      "eth_percentages_failures": {},
+      "eth_sorted_keys": [],
+      "heat_map_ubb_asic_units": {
+        "matrix": [
+          [
+            {
+              "row": 1,
+              "col": 1,
+              "row_label": "UBB_1",
+              "col_label": "ASIC_1",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 1,
+              "col": 2,
+              "row_label": "UBB_1",
+              "col_label": "ASIC_2",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 1,
+              "col": 3,
+              "row_label": "UBB_1",
+              "col_label": "ASIC_3",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 1,
+              "col": 4,
+              "row_label": "UBB_1",
+              "col_label": "ASIC_4",
+              "value": 1,
+              "intensity": 1.0
+            },
+            {
+              "row": 1,
+              "col": 5,
+              "row_label": "UBB_1",
+              "col_label": "ASIC_5",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 1,
+              "col": 6,
+              "row_label": "UBB_1",
+              "col_label": "ASIC_6",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 1,
+              "col": 7,
+              "row_label": "UBB_1",
+              "col_label": "ASIC_7",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 1,
+              "col": 8,
+              "row_label": "UBB_1",
+              "col_label": "ASIC_8",
+              "value": 0,
+              "intensity": 0.0
+            }
+          ],
+          [
+            {
+              "row": 2,
+              "col": 1,
+              "row_label": "UBB_2",
+              "col_label": "ASIC_1",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 2,
+              "col": 2,
+              "row_label": "UBB_2",
+              "col_label": "ASIC_2",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 2,
+              "col": 3,
+              "row_label": "UBB_2",
+              "col_label": "ASIC_3",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 2,
+              "col": 4,
+              "row_label": "UBB_2",
+              "col_label": "ASIC_4",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 2,
+              "col": 5,
+              "row_label": "UBB_2",
+              "col_label": "ASIC_5",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 2,
+              "col": 6,
+              "row_label": "UBB_2",
+              "col_label": "ASIC_6",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 2,
+              "col": 7,
+              "row_label": "UBB_2",
+              "col_label": "ASIC_7",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 2,
+              "col": 8,
+              "row_label": "UBB_2",
+              "col_label": "ASIC_8",
+              "value": 0,
+              "intensity": 0.0
+            }
+          ],
+          [
+            {
+              "row": 3,
+              "col": 1,
+              "row_label": "UBB_3",
+              "col_label": "ASIC_1",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 3,
+              "col": 2,
+              "row_label": "UBB_3",
+              "col_label": "ASIC_2",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 3,
+              "col": 3,
+              "row_label": "UBB_3",
+              "col_label": "ASIC_3",
+              "value": 1,
+              "intensity": 1.0
+            },
+            {
+              "row": 3,
+              "col": 4,
+              "row_label": "UBB_3",
+              "col_label": "ASIC_4",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 3,
+              "col": 5,
+              "row_label": "UBB_3",
+              "col_label": "ASIC_5",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 3,
+              "col": 6,
+              "row_label": "UBB_3",
+              "col_label": "ASIC_6",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 3,
+              "col": 7,
+              "row_label": "UBB_3",
+              "col_label": "ASIC_7",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 3,
+              "col": 8,
+              "row_label": "UBB_3",
+              "col_label": "ASIC_8",
+              "value": 0,
+              "intensity": 0.0
+            }
+          ],
+          [
+            {
+              "row": 4,
+              "col": 1,
+              "row_label": "UBB_4",
+              "col_label": "ASIC_1",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 4,
+              "col": 2,
+              "row_label": "UBB_4",
+              "col_label": "ASIC_2",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 4,
+              "col": 3,
+              "row_label": "UBB_4",
+              "col_label": "ASIC_3",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 4,
+              "col": 4,
+              "row_label": "UBB_4",
+              "col_label": "ASIC_4",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 4,
+              "col": 5,
+              "row_label": "UBB_4",
+              "col_label": "ASIC_5",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 4,
+              "col": 6,
+              "row_label": "UBB_4",
+              "col_label": "ASIC_6",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 4,
+              "col": 7,
+              "row_label": "UBB_4",
+              "col_label": "ASIC_7",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 4,
+              "col": 8,
+              "row_label": "UBB_4",
+              "col_label": "ASIC_8",
+              "value": 0,
+              "intensity": 0.0
+            }
+          ]
+        ],
+        "max_value": 1,
+        "title": "UBB vs ASIC - Affected Units",
+        "row_count": 4,
+        "col_count": 8,
+        "row_labels": [
+          "UBB_1",
+          "UBB_2",
+          "UBB_3",
+          "UBB_4"
+        ],
+        "col_labels": [
+          "ASIC_1",
+          "ASIC_2",
+          "ASIC_3",
+          "ASIC_4",
+          "ASIC_5",
+          "ASIC_6",
+          "ASIC_7",
+          "ASIC_8"
+        ],
+        "clean_col_labels": [
+          "A1",
+          "A2",
+          "A3",
+          "A4",
+          "A5",
+          "A6",
+          "A7",
+          "A8"
+        ]
+      },
+      "heat_map_ubb_asic_failures": {
+        "matrix": [
+          [
+            {
+              "row": 1,
+              "col": 1,
+              "row_label": "UBB_1",
+              "col_label": "ASIC_1",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 1,
+              "col": 2,
+              "row_label": "UBB_1",
+              "col_label": "ASIC_2",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 1,
+              "col": 3,
+              "row_label": "UBB_1",
+              "col_label": "ASIC_3",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 1,
+              "col": 4,
+              "row_label": "UBB_1",
+              "col_label": "ASIC_4",
+              "value": 5,
+              "intensity": 1.0
+            },
+            {
+              "row": 1,
+              "col": 5,
+              "row_label": "UBB_1",
+              "col_label": "ASIC_5",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 1,
+              "col": 6,
+              "row_label": "UBB_1",
+              "col_label": "ASIC_6",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 1,
+              "col": 7,
+              "row_label": "UBB_1",
+              "col_label": "ASIC_7",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 1,
+              "col": 8,
+              "row_label": "UBB_1",
+              "col_label": "ASIC_8",
+              "value": 0,
+              "intensity": 0.0
+            }
+          ],
+          [
+            {
+              "row": 2,
+              "col": 1,
+              "row_label": "UBB_2",
+              "col_label": "ASIC_1",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 2,
+              "col": 2,
+              "row_label": "UBB_2",
+              "col_label": "ASIC_2",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 2,
+              "col": 3,
+              "row_label": "UBB_2",
+              "col_label": "ASIC_3",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 2,
+              "col": 4,
+              "row_label": "UBB_2",
+              "col_label": "ASIC_4",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 2,
+              "col": 5,
+              "row_label": "UBB_2",
+              "col_label": "ASIC_5",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 2,
+              "col": 6,
+              "row_label": "UBB_2",
+              "col_label": "ASIC_6",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 2,
+              "col": 7,
+              "row_label": "UBB_2",
+              "col_label": "ASIC_7",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 2,
+              "col": 8,
+              "row_label": "UBB_2",
+              "col_label": "ASIC_8",
+              "value": 0,
+              "intensity": 0.0
+            }
+          ],
+          [
+            {
+              "row": 3,
+              "col": 1,
+              "row_label": "UBB_3",
+              "col_label": "ASIC_1",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 3,
+              "col": 2,
+              "row_label": "UBB_3",
+              "col_label": "ASIC_2",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 3,
+              "col": 3,
+              "row_label": "UBB_3",
+              "col_label": "ASIC_3",
+              "value": 1,
+              "intensity": 0.2
+            },
+            {
+              "row": 3,
+              "col": 4,
+              "row_label": "UBB_3",
+              "col_label": "ASIC_4",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 3,
+              "col": 5,
+              "row_label": "UBB_3",
+              "col_label": "ASIC_5",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 3,
+              "col": 6,
+              "row_label": "UBB_3",
+              "col_label": "ASIC_6",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 3,
+              "col": 7,
+              "row_label": "UBB_3",
+              "col_label": "ASIC_7",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 3,
+              "col": 8,
+              "row_label": "UBB_3",
+              "col_label": "ASIC_8",
+              "value": 0,
+              "intensity": 0.0
+            }
+          ],
+          [
+            {
+              "row": 4,
+              "col": 1,
+              "row_label": "UBB_4",
+              "col_label": "ASIC_1",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 4,
+              "col": 2,
+              "row_label": "UBB_4",
+              "col_label": "ASIC_2",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 4,
+              "col": 3,
+              "row_label": "UBB_4",
+              "col_label": "ASIC_3",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 4,
+              "col": 4,
+              "row_label": "UBB_4",
+              "col_label": "ASIC_4",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 4,
+              "col": 5,
+              "row_label": "UBB_4",
+              "col_label": "ASIC_5",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 4,
+              "col": 6,
+              "row_label": "UBB_4",
+              "col_label": "ASIC_6",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 4,
+              "col": 7,
+              "row_label": "UBB_4",
+              "col_label": "ASIC_7",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 4,
+              "col": 8,
+              "row_label": "UBB_4",
+              "col_label": "ASIC_8",
+              "value": 0,
+              "intensity": 0.0
+            }
+          ]
+        ],
+        "max_value": 5,
+        "title": "UBB vs ASIC - Failure Counts",
+        "row_count": 4,
+        "col_count": 8,
+        "row_labels": [
+          "UBB_1",
+          "UBB_2",
+          "UBB_3",
+          "UBB_4"
+        ],
+        "col_labels": [
+          "ASIC_1",
+          "ASIC_2",
+          "ASIC_3",
+          "ASIC_4",
+          "ASIC_5",
+          "ASIC_6",
+          "ASIC_7",
+          "ASIC_8"
+        ],
+        "clean_col_labels": [
+          "A1",
+          "A2",
+          "A3",
+          "A4",
+          "A5",
+          "A6",
+          "A7",
+          "A8"
+        ]
+      },
+      "heat_map_asic_eth_units": {
+        "matrix": [],
+        "max_value": 0,
+        "title": "ASIC vs ETH - Affected Units",
+        "row_count": 0,
+        "col_count": 0,
+        "row_labels": [],
+        "col_labels": [],
+        "clean_col_labels": []
+      },
+      "heat_map_asic_eth_failures": {
+        "matrix": [],
+        "max_value": 0,
+        "title": "ASIC vs ETH - Failure Counts",
+        "row_count": 0,
+        "col_count": 0,
+        "row_labels": [],
+        "col_labels": [],
+        "clean_col_labels": []
+      },
+      "heat_map_asic_controller_units": {
+        "matrix": [
+          [
+            {
+              "row": 1,
+              "col": "C",
+              "row_label": "ASIC_1",
+              "col_label": "Ctrl_C",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 1,
+              "col": "H",
+              "row_label": "ASIC_1",
+              "col_label": "Ctrl_H",
+              "value": 0,
+              "intensity": 0.0
+            }
+          ],
+          [
+            {
+              "row": 2,
+              "col": "C",
+              "row_label": "ASIC_2",
+              "col_label": "Ctrl_C",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 2,
+              "col": "H",
+              "row_label": "ASIC_2",
+              "col_label": "Ctrl_H",
+              "value": 0,
+              "intensity": 0.0
+            }
+          ],
+          [
+            {
+              "row": 3,
+              "col": "C",
+              "row_label": "ASIC_3",
+              "col_label": "Ctrl_C",
+              "value": 1,
+              "intensity": 1.0
+            },
+            {
+              "row": 3,
+              "col": "H",
+              "row_label": "ASIC_3",
+              "col_label": "Ctrl_H",
+              "value": 0,
+              "intensity": 0.0
+            }
+          ],
+          [
+            {
+              "row": 4,
+              "col": "C",
+              "row_label": "ASIC_4",
+              "col_label": "Ctrl_C",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 4,
+              "col": "H",
+              "row_label": "ASIC_4",
+              "col_label": "Ctrl_H",
+              "value": 1,
+              "intensity": 1.0
+            }
+          ],
+          [
+            {
+              "row": 5,
+              "col": "C",
+              "row_label": "ASIC_5",
+              "col_label": "Ctrl_C",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 5,
+              "col": "H",
+              "row_label": "ASIC_5",
+              "col_label": "Ctrl_H",
+              "value": 0,
+              "intensity": 0.0
+            }
+          ],
+          [
+            {
+              "row": 6,
+              "col": "C",
+              "row_label": "ASIC_6",
+              "col_label": "Ctrl_C",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 6,
+              "col": "H",
+              "row_label": "ASIC_6",
+              "col_label": "Ctrl_H",
+              "value": 0,
+              "intensity": 0.0
+            }
+          ],
+          [
+            {
+              "row": 7,
+              "col": "C",
+              "row_label": "ASIC_7",
+              "col_label": "Ctrl_C",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 7,
+              "col": "H",
+              "row_label": "ASIC_7",
+              "col_label": "Ctrl_H",
+              "value": 0,
+              "intensity": 0.0
+            }
+          ],
+          [
+            {
+              "row": 8,
+              "col": "C",
+              "row_label": "ASIC_8",
+              "col_label": "Ctrl_C",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 8,
+              "col": "H",
+              "row_label": "ASIC_8",
+              "col_label": "Ctrl_H",
+              "value": 0,
+              "intensity": 0.0
+            }
+          ]
+        ],
+        "max_value": 1,
+        "title": "ASIC vs Controller - Affected Units",
+        "row_count": 8,
+        "col_count": 2,
+        "row_labels": [
+          "ASIC_1",
+          "ASIC_2",
+          "ASIC_3",
+          "ASIC_4",
+          "ASIC_5",
+          "ASIC_6",
+          "ASIC_7",
+          "ASIC_8"
+        ],
+        "col_labels": [
+          "Ctrl_C",
+          "Ctrl_H"
+        ],
+        "clean_col_labels": [
+          "C",
+          "H"
+        ]
+      },
+      "heat_map_asic_controller_failures": {
+        "matrix": [
+          [
+            {
+              "row": 1,
+              "col": "C",
+              "row_label": "ASIC_1",
+              "col_label": "Ctrl_C",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 1,
+              "col": "H",
+              "row_label": "ASIC_1",
+              "col_label": "Ctrl_H",
+              "value": 0,
+              "intensity": 0.0
+            }
+          ],
+          [
+            {
+              "row": 2,
+              "col": "C",
+              "row_label": "ASIC_2",
+              "col_label": "Ctrl_C",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 2,
+              "col": "H",
+              "row_label": "ASIC_2",
+              "col_label": "Ctrl_H",
+              "value": 0,
+              "intensity": 0.0
+            }
+          ],
+          [
+            {
+              "row": 3,
+              "col": "C",
+              "row_label": "ASIC_3",
+              "col_label": "Ctrl_C",
+              "value": 1,
+              "intensity": 0.2
+            },
+            {
+              "row": 3,
+              "col": "H",
+              "row_label": "ASIC_3",
+              "col_label": "Ctrl_H",
+              "value": 0,
+              "intensity": 0.0
+            }
+          ],
+          [
+            {
+              "row": 4,
+              "col": "C",
+              "row_label": "ASIC_4",
+              "col_label": "Ctrl_C",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 4,
+              "col": "H",
+              "row_label": "ASIC_4",
+              "col_label": "Ctrl_H",
+              "value": 5,
+              "intensity": 1.0
+            }
+          ],
+          [
+            {
+              "row": 5,
+              "col": "C",
+              "row_label": "ASIC_5",
+              "col_label": "Ctrl_C",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 5,
+              "col": "H",
+              "row_label": "ASIC_5",
+              "col_label": "Ctrl_H",
+              "value": 0,
+              "intensity": 0.0
+            }
+          ],
+          [
+            {
+              "row": 6,
+              "col": "C",
+              "row_label": "ASIC_6",
+              "col_label": "Ctrl_C",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 6,
+              "col": "H",
+              "row_label": "ASIC_6",
+              "col_label": "Ctrl_H",
+              "value": 0,
+              "intensity": 0.0
+            }
+          ],
+          [
+            {
+              "row": 7,
+              "col": "C",
+              "row_label": "ASIC_7",
+              "col_label": "Ctrl_C",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 7,
+              "col": "H",
+              "row_label": "ASIC_7",
+              "col_label": "Ctrl_H",
+              "value": 0,
+              "intensity": 0.0
+            }
+          ],
+          [
+            {
+              "row": 8,
+              "col": "C",
+              "row_label": "ASIC_8",
+              "col_label": "Ctrl_C",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 8,
+              "col": "H",
+              "row_label": "ASIC_8",
+              "col_label": "Ctrl_H",
+              "value": 0,
+              "intensity": 0.0
+            }
+          ]
+        ],
+        "max_value": 5,
+        "title": "ASIC vs Controller - Failure Counts",
+        "row_count": 8,
+        "col_count": 2,
+        "row_labels": [
+          "ASIC_1",
+          "ASIC_2",
+          "ASIC_3",
+          "ASIC_4",
+          "ASIC_5",
+          "ASIC_6",
+          "ASIC_7",
+          "ASIC_8"
+        ],
+        "col_labels": [
+          "Ctrl_C",
+          "Ctrl_H"
+        ],
+        "clean_col_labels": [
+          "C",
+          "H"
+        ]
+      },
+      "heat_map_ubb_controller_units": {
+        "matrix": [
+          [
+            {
+              "row": 1,
+              "col": "C",
+              "row_label": "UBB_1",
+              "col_label": "Ctrl_C",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 1,
+              "col": "H",
+              "row_label": "UBB_1",
+              "col_label": "Ctrl_H",
+              "value": 1,
+              "intensity": 1.0
+            }
+          ],
+          [
+            {
+              "row": 2,
+              "col": "C",
+              "row_label": "UBB_2",
+              "col_label": "Ctrl_C",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 2,
+              "col": "H",
+              "row_label": "UBB_2",
+              "col_label": "Ctrl_H",
+              "value": 0,
+              "intensity": 0.0
+            }
+          ],
+          [
+            {
+              "row": 3,
+              "col": "C",
+              "row_label": "UBB_3",
+              "col_label": "Ctrl_C",
+              "value": 1,
+              "intensity": 1.0
+            },
+            {
+              "row": 3,
+              "col": "H",
+              "row_label": "UBB_3",
+              "col_label": "Ctrl_H",
+              "value": 0,
+              "intensity": 0.0
+            }
+          ],
+          [
+            {
+              "row": 4,
+              "col": "C",
+              "row_label": "UBB_4",
+              "col_label": "Ctrl_C",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 4,
+              "col": "H",
+              "row_label": "UBB_4",
+              "col_label": "Ctrl_H",
+              "value": 0,
+              "intensity": 0.0
+            }
+          ]
+        ],
+        "max_value": 1,
+        "title": "UBB vs Controller - Affected Units",
+        "row_count": 4,
+        "col_count": 2,
+        "row_labels": [
+          "UBB_1",
+          "UBB_2",
+          "UBB_3",
+          "UBB_4"
+        ],
+        "col_labels": [
+          "Ctrl_C",
+          "Ctrl_H"
+        ],
+        "clean_col_labels": [
+          "C",
+          "H"
+        ]
+      },
+      "heat_map_ubb_controller_failures": {
+        "matrix": [
+          [
+            {
+              "row": 1,
+              "col": "C",
+              "row_label": "UBB_1",
+              "col_label": "Ctrl_C",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 1,
+              "col": "H",
+              "row_label": "UBB_1",
+              "col_label": "Ctrl_H",
+              "value": 5,
+              "intensity": 1.0
+            }
+          ],
+          [
+            {
+              "row": 2,
+              "col": "C",
+              "row_label": "UBB_2",
+              "col_label": "Ctrl_C",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 2,
+              "col": "H",
+              "row_label": "UBB_2",
+              "col_label": "Ctrl_H",
+              "value": 0,
+              "intensity": 0.0
+            }
+          ],
+          [
+            {
+              "row": 3,
+              "col": "C",
+              "row_label": "UBB_3",
+              "col_label": "Ctrl_C",
+              "value": 1,
+              "intensity": 0.2
+            },
+            {
+              "row": 3,
+              "col": "H",
+              "row_label": "UBB_3",
+              "col_label": "Ctrl_H",
+              "value": 0,
+              "intensity": 0.0
+            }
+          ],
+          [
+            {
+              "row": 4,
+              "col": "C",
+              "row_label": "UBB_4",
+              "col_label": "Ctrl_C",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 4,
+              "col": "H",
+              "row_label": "UBB_4",
+              "col_label": "Ctrl_H",
+              "value": 0,
+              "intensity": 0.0
+            }
+          ]
+        ],
+        "max_value": 5,
+        "title": "UBB vs Controller - Failure Counts",
+        "row_count": 4,
+        "col_count": 2,
+        "row_labels": [
+          "UBB_1",
+          "UBB_2",
+          "UBB_3",
+          "UBB_4"
+        ],
+        "col_labels": [
+          "Ctrl_C",
+          "Ctrl_H"
+        ],
+        "clean_col_labels": [
+          "C",
+          "H"
+        ]
+      },
+      "heat_map_ubb_eth_units": {
+        "matrix": [],
+        "max_value": 0,
+        "title": "UBB vs ETH - Affected Units",
+        "row_count": 0,
+        "col_count": 0,
+        "row_labels": [],
+        "col_labels": [],
+        "clean_col_labels": []
+      },
+      "heat_map_ubb_eth_failures": {
+        "matrix": [],
+        "max_value": 0,
+        "title": "UBB vs ETH - Failure Counts",
+        "row_count": 0,
+        "col_count": 0,
+        "row_labels": [],
+        "col_labels": [],
+        "clean_col_labels": []
+      },
+      "heat_map_ctrl_eth_units": {
+        "matrix": [],
+        "max_value": 0,
+        "title": "Controller vs ETH - Affected Units",
+        "row_count": 0,
+        "col_count": 0,
+        "row_labels": [],
+        "col_labels": [],
+        "clean_col_labels": []
+      },
+      "heat_map_ctrl_eth_failures": {
+        "matrix": [],
+        "max_value": 0,
+        "title": "Controller vs ETH - Failure Counts",
+        "row_count": 0,
+        "col_count": 0,
+        "row_labels": [],
+        "col_labels": [],
+        "clean_col_labels": []
+      },
+      "visual_cards": [
+        {
+          "title": "Total Units: 2",
+          "count": 2,
+          "severity": "high",
+          "icon": "\ud83d\udcca",
+          "color": "#3498db"
+        },
+        {
+          "title": "Total Failures: 6",
+          "count": 6,
+          "severity": "medium",
+          "icon": "\u26a0\ufe0f",
+          "color": "#e74c3c"
+        },
+        {
+          "title": "UBB_1 + ASIC_4",
+          "count": 5,
+          "severity": "high",
+          "icon": "\ud83d\udd0c",
+          "color": "#e74c3c"
+        },
+        {
+          "title": "ASIC_4 + Ctrl_H",
+          "count": 5,
+          "severity": "high",
+          "icon": "\ud83c\udf9b\ufe0f",
+          "color": "#e74c3c"
+        },
+        {
+          "title": "UBB_3 + ASIC_3",
+          "count": 1,
+          "severity": "low",
+          "icon": "\ud83d\udd0c",
+          "color": "#2ecc71"
+        },
+        {
+          "title": "ASIC_3 + Ctrl_C",
+          "count": 1,
+          "severity": "low",
+          "icon": "\ud83c\udf9b\ufe0f",
+          "color": "#2ecc71"
+        }
+      ],
+      "summary_insights": [
+        {
+          "icon": "\ud83d\udea8",
+          "title": "UBB 1 Critical",
+          "description": "UBB 1 shows 83% failure rate (5 failures) - needs immediate attention",
+          "severity": "extreme"
+        },
+        {
+          "icon": "\ud83d\udea8",
+          "title": "Ctrl_H Critical",
+          "description": "Ctrl_H shows 83% failure rate (5 failures) - component issue",
+          "severity": "extreme"
+        },
+        {
+          "icon": "\ud83d\udea8",
+          "title": "ASIC 4 Critical",
+          "description": "ASIC 4 shows 83% failure rate (5 failures) - focus required",
+          "severity": "extreme"
+        }
+      ]
+    },
+    {
+      "jira_entry": "QUAN-524",
+      "jira_summary": "ASIC initialization failed - EFRDY",
+      "affected_units": 1,
+      "failure_counts": 21,
+      "failure_rate": "1.75%",
+      "description": "ASIC initialization failed - EFRDY",
+      "category": "other",
+      "has_test_data": true,
+      "notes": "Same error code/type was seen in QUAN-362. The failure rate with MRISC FW 2.9 is ~1% (included in TT FW 18.7.01); hence, the Jira (QUAN-362) was closed.",
+      "error_types": [
+        "From QUAN-524"
+      ],
+      "unique_serials_affected": 1,
+      "apy_affected_units": 1,
+      "ubb_distribution_units": {
+        "UBB_1": 1,
+        "UBB_2": 0,
+        "UBB_3": 0,
+        "UBB_4": 0
+      },
+      "ubb_distribution_failures": {
+        "UBB_1": 21,
+        "UBB_2": 0,
+        "UBB_3": 0,
+        "UBB_4": 0
+      },
+      "ubb_percentages_units": {
+        "UBB_1": 100.0,
+        "UBB_2": 0.0,
+        "UBB_3": 0.0,
+        "UBB_4": 0.0
+      },
+      "ubb_percentages_failures": {
+        "UBB_1": 100.0,
+        "UBB_2": 0.0,
+        "UBB_3": 0.0,
+        "UBB_4": 0.0
+      },
+      "ubb_sorted_keys": [
+        "UBB_1",
+        "UBB_2",
+        "UBB_3",
+        "UBB_4"
+      ],
+      "asic_distribution_units": {
+        "ASIC_1": 0,
+        "ASIC_2": 0,
+        "ASIC_3": 0,
+        "ASIC_4": 1,
+        "ASIC_5": 0,
+        "ASIC_6": 0,
+        "ASIC_7": 0,
+        "ASIC_8": 0
+      },
+      "asic_distribution_failures": {
+        "ASIC_1": 0,
+        "ASIC_2": 0,
+        "ASIC_3": 0,
+        "ASIC_4": 21,
+        "ASIC_5": 0,
+        "ASIC_6": 0,
+        "ASIC_7": 0,
+        "ASIC_8": 0
+      },
+      "asic_percentages_units": {
+        "ASIC_1": 0.0,
+        "ASIC_2": 0.0,
+        "ASIC_3": 0.0,
+        "ASIC_4": 100.0,
+        "ASIC_5": 0.0,
+        "ASIC_6": 0.0,
+        "ASIC_7": 0.0,
+        "ASIC_8": 0.0
+      },
+      "asic_percentages_failures": {
+        "ASIC_1": 0.0,
+        "ASIC_2": 0.0,
+        "ASIC_3": 0.0,
+        "ASIC_4": 100.0,
+        "ASIC_5": 0.0,
+        "ASIC_6": 0.0,
+        "ASIC_7": 0.0,
+        "ASIC_8": 0.0
+      },
+      "asic_sorted_keys": [
+        "ASIC_1",
+        "ASIC_2",
+        "ASIC_3",
+        "ASIC_4",
+        "ASIC_5",
+        "ASIC_6",
+        "ASIC_7",
+        "ASIC_8"
+      ],
+      "controller_distribution_units": {},
+      "controller_distribution_failures": {},
+      "controller_percentages_units": {},
+      "controller_percentages_failures": {},
+      "controller_sorted_keys": [],
+      "eth_distribution_units": {},
+      "eth_distribution_failures": {},
+      "eth_percentages_units": {},
+      "eth_percentages_failures": {},
+      "eth_sorted_keys": [],
+      "heat_map_ubb_asic_units": {
+        "matrix": [
+          [
+            {
+              "row": 1,
+              "col": 1,
+              "row_label": "UBB_1",
+              "col_label": "ASIC_1",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 1,
+              "col": 2,
+              "row_label": "UBB_1",
+              "col_label": "ASIC_2",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 1,
+              "col": 3,
+              "row_label": "UBB_1",
+              "col_label": "ASIC_3",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 1,
+              "col": 4,
+              "row_label": "UBB_1",
+              "col_label": "ASIC_4",
+              "value": 1,
+              "intensity": 1.0
+            },
+            {
+              "row": 1,
+              "col": 5,
+              "row_label": "UBB_1",
+              "col_label": "ASIC_5",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 1,
+              "col": 6,
+              "row_label": "UBB_1",
+              "col_label": "ASIC_6",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 1,
+              "col": 7,
+              "row_label": "UBB_1",
+              "col_label": "ASIC_7",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 1,
+              "col": 8,
+              "row_label": "UBB_1",
+              "col_label": "ASIC_8",
+              "value": 0,
+              "intensity": 0.0
+            }
+          ],
+          [
+            {
+              "row": 2,
+              "col": 1,
+              "row_label": "UBB_2",
+              "col_label": "ASIC_1",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 2,
+              "col": 2,
+              "row_label": "UBB_2",
+              "col_label": "ASIC_2",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 2,
+              "col": 3,
+              "row_label": "UBB_2",
+              "col_label": "ASIC_3",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 2,
+              "col": 4,
+              "row_label": "UBB_2",
+              "col_label": "ASIC_4",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 2,
+              "col": 5,
+              "row_label": "UBB_2",
+              "col_label": "ASIC_5",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 2,
+              "col": 6,
+              "row_label": "UBB_2",
+              "col_label": "ASIC_6",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 2,
+              "col": 7,
+              "row_label": "UBB_2",
+              "col_label": "ASIC_7",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 2,
+              "col": 8,
+              "row_label": "UBB_2",
+              "col_label": "ASIC_8",
+              "value": 0,
+              "intensity": 0.0
+            }
+          ],
+          [
+            {
+              "row": 3,
+              "col": 1,
+              "row_label": "UBB_3",
+              "col_label": "ASIC_1",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 3,
+              "col": 2,
+              "row_label": "UBB_3",
+              "col_label": "ASIC_2",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 3,
+              "col": 3,
+              "row_label": "UBB_3",
+              "col_label": "ASIC_3",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 3,
+              "col": 4,
+              "row_label": "UBB_3",
+              "col_label": "ASIC_4",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 3,
+              "col": 5,
+              "row_label": "UBB_3",
+              "col_label": "ASIC_5",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 3,
+              "col": 6,
+              "row_label": "UBB_3",
+              "col_label": "ASIC_6",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 3,
+              "col": 7,
+              "row_label": "UBB_3",
+              "col_label": "ASIC_7",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 3,
+              "col": 8,
+              "row_label": "UBB_3",
+              "col_label": "ASIC_8",
+              "value": 0,
+              "intensity": 0.0
+            }
+          ],
+          [
+            {
+              "row": 4,
+              "col": 1,
+              "row_label": "UBB_4",
+              "col_label": "ASIC_1",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 4,
+              "col": 2,
+              "row_label": "UBB_4",
+              "col_label": "ASIC_2",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 4,
+              "col": 3,
+              "row_label": "UBB_4",
+              "col_label": "ASIC_3",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 4,
+              "col": 4,
+              "row_label": "UBB_4",
+              "col_label": "ASIC_4",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 4,
+              "col": 5,
+              "row_label": "UBB_4",
+              "col_label": "ASIC_5",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 4,
+              "col": 6,
+              "row_label": "UBB_4",
+              "col_label": "ASIC_6",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 4,
+              "col": 7,
+              "row_label": "UBB_4",
+              "col_label": "ASIC_7",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 4,
+              "col": 8,
+              "row_label": "UBB_4",
+              "col_label": "ASIC_8",
+              "value": 0,
+              "intensity": 0.0
+            }
+          ]
+        ],
+        "max_value": 1,
+        "title": "UBB vs ASIC - Affected Units",
+        "row_count": 4,
+        "col_count": 8,
+        "row_labels": [
+          "UBB_1",
+          "UBB_2",
+          "UBB_3",
+          "UBB_4"
+        ],
+        "col_labels": [
+          "ASIC_1",
+          "ASIC_2",
+          "ASIC_3",
+          "ASIC_4",
+          "ASIC_5",
+          "ASIC_6",
+          "ASIC_7",
+          "ASIC_8"
+        ],
+        "clean_col_labels": [
+          "A1",
+          "A2",
+          "A3",
+          "A4",
+          "A5",
+          "A6",
+          "A7",
+          "A8"
+        ]
+      },
+      "heat_map_ubb_asic_failures": {
+        "matrix": [
+          [
+            {
+              "row": 1,
+              "col": 1,
+              "row_label": "UBB_1",
+              "col_label": "ASIC_1",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 1,
+              "col": 2,
+              "row_label": "UBB_1",
+              "col_label": "ASIC_2",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 1,
+              "col": 3,
+              "row_label": "UBB_1",
+              "col_label": "ASIC_3",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 1,
+              "col": 4,
+              "row_label": "UBB_1",
+              "col_label": "ASIC_4",
+              "value": 21,
+              "intensity": 1.0
+            },
+            {
+              "row": 1,
+              "col": 5,
+              "row_label": "UBB_1",
+              "col_label": "ASIC_5",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 1,
+              "col": 6,
+              "row_label": "UBB_1",
+              "col_label": "ASIC_6",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 1,
+              "col": 7,
+              "row_label": "UBB_1",
+              "col_label": "ASIC_7",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 1,
+              "col": 8,
+              "row_label": "UBB_1",
+              "col_label": "ASIC_8",
+              "value": 0,
+              "intensity": 0.0
+            }
+          ],
+          [
+            {
+              "row": 2,
+              "col": 1,
+              "row_label": "UBB_2",
+              "col_label": "ASIC_1",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 2,
+              "col": 2,
+              "row_label": "UBB_2",
+              "col_label": "ASIC_2",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 2,
+              "col": 3,
+              "row_label": "UBB_2",
+              "col_label": "ASIC_3",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 2,
+              "col": 4,
+              "row_label": "UBB_2",
+              "col_label": "ASIC_4",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 2,
+              "col": 5,
+              "row_label": "UBB_2",
+              "col_label": "ASIC_5",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 2,
+              "col": 6,
+              "row_label": "UBB_2",
+              "col_label": "ASIC_6",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 2,
+              "col": 7,
+              "row_label": "UBB_2",
+              "col_label": "ASIC_7",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 2,
+              "col": 8,
+              "row_label": "UBB_2",
+              "col_label": "ASIC_8",
+              "value": 0,
+              "intensity": 0.0
+            }
+          ],
+          [
+            {
+              "row": 3,
+              "col": 1,
+              "row_label": "UBB_3",
+              "col_label": "ASIC_1",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 3,
+              "col": 2,
+              "row_label": "UBB_3",
+              "col_label": "ASIC_2",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 3,
+              "col": 3,
+              "row_label": "UBB_3",
+              "col_label": "ASIC_3",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 3,
+              "col": 4,
+              "row_label": "UBB_3",
+              "col_label": "ASIC_4",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 3,
+              "col": 5,
+              "row_label": "UBB_3",
+              "col_label": "ASIC_5",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 3,
+              "col": 6,
+              "row_label": "UBB_3",
+              "col_label": "ASIC_6",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 3,
+              "col": 7,
+              "row_label": "UBB_3",
+              "col_label": "ASIC_7",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 3,
+              "col": 8,
+              "row_label": "UBB_3",
+              "col_label": "ASIC_8",
+              "value": 0,
+              "intensity": 0.0
+            }
+          ],
+          [
+            {
+              "row": 4,
+              "col": 1,
+              "row_label": "UBB_4",
+              "col_label": "ASIC_1",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 4,
+              "col": 2,
+              "row_label": "UBB_4",
+              "col_label": "ASIC_2",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 4,
+              "col": 3,
+              "row_label": "UBB_4",
+              "col_label": "ASIC_3",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 4,
+              "col": 4,
+              "row_label": "UBB_4",
+              "col_label": "ASIC_4",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 4,
+              "col": 5,
+              "row_label": "UBB_4",
+              "col_label": "ASIC_5",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 4,
+              "col": 6,
+              "row_label": "UBB_4",
+              "col_label": "ASIC_6",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 4,
+              "col": 7,
+              "row_label": "UBB_4",
+              "col_label": "ASIC_7",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 4,
+              "col": 8,
+              "row_label": "UBB_4",
+              "col_label": "ASIC_8",
+              "value": 0,
+              "intensity": 0.0
+            }
+          ]
+        ],
+        "max_value": 21,
+        "title": "UBB vs ASIC - Failure Counts",
+        "row_count": 4,
+        "col_count": 8,
+        "row_labels": [
+          "UBB_1",
+          "UBB_2",
+          "UBB_3",
+          "UBB_4"
+        ],
+        "col_labels": [
+          "ASIC_1",
+          "ASIC_2",
+          "ASIC_3",
+          "ASIC_4",
+          "ASIC_5",
+          "ASIC_6",
+          "ASIC_7",
+          "ASIC_8"
+        ],
+        "clean_col_labels": [
+          "A1",
+          "A2",
+          "A3",
+          "A4",
+          "A5",
+          "A6",
+          "A7",
+          "A8"
+        ]
+      },
+      "heat_map_asic_eth_units": {
+        "matrix": [],
+        "max_value": 0,
+        "title": "ASIC vs ETH - Affected Units",
+        "row_count": 0,
+        "col_count": 0,
+        "row_labels": [],
+        "col_labels": [],
+        "clean_col_labels": []
+      },
+      "heat_map_asic_eth_failures": {
+        "matrix": [],
+        "max_value": 0,
+        "title": "ASIC vs ETH - Failure Counts",
+        "row_count": 0,
+        "col_count": 0,
+        "row_labels": [],
+        "col_labels": [],
+        "clean_col_labels": []
+      },
+      "heat_map_asic_controller_units": {
+        "matrix": [],
+        "max_value": 0,
+        "title": "ASIC vs Controller - Affected Units",
+        "row_count": 0,
+        "col_count": 0,
+        "row_labels": [],
+        "col_labels": [],
+        "clean_col_labels": []
+      },
+      "heat_map_asic_controller_failures": {
+        "matrix": [],
+        "max_value": 0,
+        "title": "ASIC vs Controller - Failure Counts",
+        "row_count": 0,
+        "col_count": 0,
+        "row_labels": [],
+        "col_labels": [],
+        "clean_col_labels": []
+      },
+      "heat_map_ubb_controller_units": {
+        "matrix": [],
+        "max_value": 0,
+        "title": "UBB vs Controller - Affected Units",
+        "row_count": 0,
+        "col_count": 0,
+        "row_labels": [],
+        "col_labels": [],
+        "clean_col_labels": []
+      },
+      "heat_map_ubb_controller_failures": {
+        "matrix": [],
+        "max_value": 0,
+        "title": "UBB vs Controller - Failure Counts",
+        "row_count": 0,
+        "col_count": 0,
+        "row_labels": [],
+        "col_labels": [],
+        "clean_col_labels": []
+      },
+      "heat_map_ubb_eth_units": {
+        "matrix": [],
+        "max_value": 0,
+        "title": "UBB vs ETH - Affected Units",
+        "row_count": 0,
+        "col_count": 0,
+        "row_labels": [],
+        "col_labels": [],
+        "clean_col_labels": []
+      },
+      "heat_map_ubb_eth_failures": {
+        "matrix": [],
+        "max_value": 0,
+        "title": "UBB vs ETH - Failure Counts",
+        "row_count": 0,
+        "col_count": 0,
+        "row_labels": [],
+        "col_labels": [],
+        "clean_col_labels": []
+      },
+      "heat_map_ctrl_eth_units": {
+        "matrix": [],
+        "max_value": 0,
+        "title": "Controller vs ETH - Affected Units",
+        "row_count": 0,
+        "col_count": 0,
+        "row_labels": [],
+        "col_labels": [],
+        "clean_col_labels": []
+      },
+      "heat_map_ctrl_eth_failures": {
+        "matrix": [],
+        "max_value": 0,
+        "title": "Controller vs ETH - Failure Counts",
+        "row_count": 0,
+        "col_count": 0,
+        "row_labels": [],
+        "col_labels": [],
+        "clean_col_labels": []
+      },
+      "visual_cards": [
+        {
+          "title": "Total Units: 1",
+          "count": 1,
+          "severity": "high",
+          "icon": "\ud83d\udcca",
+          "color": "#3498db"
+        },
+        {
+          "title": "Total Failures: 21",
+          "count": 21,
+          "severity": "medium",
+          "icon": "\u26a0\ufe0f",
+          "color": "#e74c3c"
+        },
+        {
+          "title": "UBB_1 + ASIC_4",
+          "count": 21,
+          "severity": "high",
+          "icon": "\ud83d\udd0c",
+          "color": "#e74c3c"
+        }
+      ],
+      "summary_insights": [
+        {
+          "icon": "\ud83d\udea8",
+          "title": "UBB 1 Critical",
+          "description": "UBB 1 shows 100% failure rate (21 failures) - needs immediate attention",
+          "severity": "extreme"
+        },
+        {
+          "icon": "\ud83d\udea8",
+          "title": "ASIC 4 Critical",
+          "description": "ASIC 4 shows 100% failure rate (21 failures) - focus required",
+          "severity": "extreme"
+        }
+      ]
+    },
+    {
+      "jira_entry": "QUAN-366",
+      "jira_summary": "DDR Training ET failure at 14G",
+      "affected_units": 1,
+      "failure_counts": 1,
+      "failure_rate": "1.75%",
+      "description": "DDR Training ET failure at 14G",
+      "category": "ddr",
+      "has_test_data": true,
+      "notes": "6 units (2.16%) since UBB Rev B builds. Currently all failures are seen on UBB 3&4.",
+      "error_types": [
+        "From QUAN-366"
+      ],
+      "unique_serials_affected": 1,
+      "apy_affected_units": 1,
+      "ubb_distribution_units": {
+        "UBB_1": 0,
+        "UBB_2": 0,
+        "UBB_3": 1,
+        "UBB_4": 0
+      },
+      "ubb_distribution_failures": {
+        "UBB_1": 0,
+        "UBB_2": 0,
+        "UBB_3": 1,
+        "UBB_4": 0
+      },
+      "ubb_percentages_units": {
+        "UBB_1": 0.0,
+        "UBB_2": 0.0,
+        "UBB_3": 100.0,
+        "UBB_4": 0.0
+      },
+      "ubb_percentages_failures": {
+        "UBB_1": 0.0,
+        "UBB_2": 0.0,
+        "UBB_3": 100.0,
+        "UBB_4": 0.0
+      },
+      "ubb_sorted_keys": [
+        "UBB_1",
+        "UBB_2",
+        "UBB_3",
+        "UBB_4"
+      ],
+      "asic_distribution_units": {
+        "ASIC_1": 0,
+        "ASIC_2": 0,
+        "ASIC_3": 1,
+        "ASIC_4": 0,
+        "ASIC_5": 0,
+        "ASIC_6": 0,
+        "ASIC_7": 0,
+        "ASIC_8": 0
+      },
+      "asic_distribution_failures": {
+        "ASIC_1": 0,
+        "ASIC_2": 0,
+        "ASIC_3": 1,
+        "ASIC_4": 0,
+        "ASIC_5": 0,
+        "ASIC_6": 0,
+        "ASIC_7": 0,
+        "ASIC_8": 0
+      },
+      "asic_percentages_units": {
+        "ASIC_1": 0.0,
+        "ASIC_2": 0.0,
+        "ASIC_3": 100.0,
+        "ASIC_4": 0.0,
+        "ASIC_5": 0.0,
+        "ASIC_6": 0.0,
+        "ASIC_7": 0.0,
+        "ASIC_8": 0.0
+      },
+      "asic_percentages_failures": {
+        "ASIC_1": 0.0,
+        "ASIC_2": 0.0,
+        "ASIC_3": 100.0,
+        "ASIC_4": 0.0,
+        "ASIC_5": 0.0,
+        "ASIC_6": 0.0,
+        "ASIC_7": 0.0,
+        "ASIC_8": 0.0
+      },
+      "asic_sorted_keys": [
+        "ASIC_1",
+        "ASIC_2",
+        "ASIC_3",
+        "ASIC_4",
+        "ASIC_5",
+        "ASIC_6",
+        "ASIC_7",
+        "ASIC_8"
+      ],
+      "controller_distribution_units": {},
+      "controller_distribution_failures": {},
+      "controller_percentages_units": {},
+      "controller_percentages_failures": {},
+      "controller_sorted_keys": [],
+      "eth_distribution_units": {},
+      "eth_distribution_failures": {},
+      "eth_percentages_units": {},
+      "eth_percentages_failures": {},
+      "eth_sorted_keys": [],
+      "heat_map_ubb_asic_units": {
+        "matrix": [
+          [
+            {
+              "row": 1,
+              "col": 1,
+              "row_label": "UBB_1",
+              "col_label": "ASIC_1",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 1,
+              "col": 2,
+              "row_label": "UBB_1",
+              "col_label": "ASIC_2",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 1,
+              "col": 3,
+              "row_label": "UBB_1",
+              "col_label": "ASIC_3",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 1,
+              "col": 4,
+              "row_label": "UBB_1",
+              "col_label": "ASIC_4",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 1,
+              "col": 5,
+              "row_label": "UBB_1",
+              "col_label": "ASIC_5",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 1,
+              "col": 6,
+              "row_label": "UBB_1",
+              "col_label": "ASIC_6",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 1,
+              "col": 7,
+              "row_label": "UBB_1",
+              "col_label": "ASIC_7",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 1,
+              "col": 8,
+              "row_label": "UBB_1",
+              "col_label": "ASIC_8",
+              "value": 0,
+              "intensity": 0.0
+            }
+          ],
+          [
+            {
+              "row": 2,
+              "col": 1,
+              "row_label": "UBB_2",
+              "col_label": "ASIC_1",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 2,
+              "col": 2,
+              "row_label": "UBB_2",
+              "col_label": "ASIC_2",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 2,
+              "col": 3,
+              "row_label": "UBB_2",
+              "col_label": "ASIC_3",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 2,
+              "col": 4,
+              "row_label": "UBB_2",
+              "col_label": "ASIC_4",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 2,
+              "col": 5,
+              "row_label": "UBB_2",
+              "col_label": "ASIC_5",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 2,
+              "col": 6,
+              "row_label": "UBB_2",
+              "col_label": "ASIC_6",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 2,
+              "col": 7,
+              "row_label": "UBB_2",
+              "col_label": "ASIC_7",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 2,
+              "col": 8,
+              "row_label": "UBB_2",
+              "col_label": "ASIC_8",
+              "value": 0,
+              "intensity": 0.0
+            }
+          ],
+          [
+            {
+              "row": 3,
+              "col": 1,
+              "row_label": "UBB_3",
+              "col_label": "ASIC_1",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 3,
+              "col": 2,
+              "row_label": "UBB_3",
+              "col_label": "ASIC_2",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 3,
+              "col": 3,
+              "row_label": "UBB_3",
+              "col_label": "ASIC_3",
+              "value": 1,
+              "intensity": 1.0
+            },
+            {
+              "row": 3,
+              "col": 4,
+              "row_label": "UBB_3",
+              "col_label": "ASIC_4",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 3,
+              "col": 5,
+              "row_label": "UBB_3",
+              "col_label": "ASIC_5",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 3,
+              "col": 6,
+              "row_label": "UBB_3",
+              "col_label": "ASIC_6",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 3,
+              "col": 7,
+              "row_label": "UBB_3",
+              "col_label": "ASIC_7",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 3,
+              "col": 8,
+              "row_label": "UBB_3",
+              "col_label": "ASIC_8",
+              "value": 0,
+              "intensity": 0.0
+            }
+          ],
+          [
+            {
+              "row": 4,
+              "col": 1,
+              "row_label": "UBB_4",
+              "col_label": "ASIC_1",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 4,
+              "col": 2,
+              "row_label": "UBB_4",
+              "col_label": "ASIC_2",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 4,
+              "col": 3,
+              "row_label": "UBB_4",
+              "col_label": "ASIC_3",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 4,
+              "col": 4,
+              "row_label": "UBB_4",
+              "col_label": "ASIC_4",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 4,
+              "col": 5,
+              "row_label": "UBB_4",
+              "col_label": "ASIC_5",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 4,
+              "col": 6,
+              "row_label": "UBB_4",
+              "col_label": "ASIC_6",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 4,
+              "col": 7,
+              "row_label": "UBB_4",
+              "col_label": "ASIC_7",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 4,
+              "col": 8,
+              "row_label": "UBB_4",
+              "col_label": "ASIC_8",
+              "value": 0,
+              "intensity": 0.0
+            }
+          ]
+        ],
+        "max_value": 1,
+        "title": "UBB vs ASIC - Affected Units",
+        "row_count": 4,
+        "col_count": 8,
+        "row_labels": [
+          "UBB_1",
+          "UBB_2",
+          "UBB_3",
+          "UBB_4"
+        ],
+        "col_labels": [
+          "ASIC_1",
+          "ASIC_2",
+          "ASIC_3",
+          "ASIC_4",
+          "ASIC_5",
+          "ASIC_6",
+          "ASIC_7",
+          "ASIC_8"
+        ],
+        "clean_col_labels": [
+          "A1",
+          "A2",
+          "A3",
+          "A4",
+          "A5",
+          "A6",
+          "A7",
+          "A8"
+        ]
+      },
+      "heat_map_ubb_asic_failures": {
+        "matrix": [
+          [
+            {
+              "row": 1,
+              "col": 1,
+              "row_label": "UBB_1",
+              "col_label": "ASIC_1",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 1,
+              "col": 2,
+              "row_label": "UBB_1",
+              "col_label": "ASIC_2",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 1,
+              "col": 3,
+              "row_label": "UBB_1",
+              "col_label": "ASIC_3",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 1,
+              "col": 4,
+              "row_label": "UBB_1",
+              "col_label": "ASIC_4",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 1,
+              "col": 5,
+              "row_label": "UBB_1",
+              "col_label": "ASIC_5",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 1,
+              "col": 6,
+              "row_label": "UBB_1",
+              "col_label": "ASIC_6",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 1,
+              "col": 7,
+              "row_label": "UBB_1",
+              "col_label": "ASIC_7",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 1,
+              "col": 8,
+              "row_label": "UBB_1",
+              "col_label": "ASIC_8",
+              "value": 0,
+              "intensity": 0.0
+            }
+          ],
+          [
+            {
+              "row": 2,
+              "col": 1,
+              "row_label": "UBB_2",
+              "col_label": "ASIC_1",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 2,
+              "col": 2,
+              "row_label": "UBB_2",
+              "col_label": "ASIC_2",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 2,
+              "col": 3,
+              "row_label": "UBB_2",
+              "col_label": "ASIC_3",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 2,
+              "col": 4,
+              "row_label": "UBB_2",
+              "col_label": "ASIC_4",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 2,
+              "col": 5,
+              "row_label": "UBB_2",
+              "col_label": "ASIC_5",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 2,
+              "col": 6,
+              "row_label": "UBB_2",
+              "col_label": "ASIC_6",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 2,
+              "col": 7,
+              "row_label": "UBB_2",
+              "col_label": "ASIC_7",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 2,
+              "col": 8,
+              "row_label": "UBB_2",
+              "col_label": "ASIC_8",
+              "value": 0,
+              "intensity": 0.0
+            }
+          ],
+          [
+            {
+              "row": 3,
+              "col": 1,
+              "row_label": "UBB_3",
+              "col_label": "ASIC_1",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 3,
+              "col": 2,
+              "row_label": "UBB_3",
+              "col_label": "ASIC_2",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 3,
+              "col": 3,
+              "row_label": "UBB_3",
+              "col_label": "ASIC_3",
+              "value": 1,
+              "intensity": 1.0
+            },
+            {
+              "row": 3,
+              "col": 4,
+              "row_label": "UBB_3",
+              "col_label": "ASIC_4",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 3,
+              "col": 5,
+              "row_label": "UBB_3",
+              "col_label": "ASIC_5",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 3,
+              "col": 6,
+              "row_label": "UBB_3",
+              "col_label": "ASIC_6",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 3,
+              "col": 7,
+              "row_label": "UBB_3",
+              "col_label": "ASIC_7",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 3,
+              "col": 8,
+              "row_label": "UBB_3",
+              "col_label": "ASIC_8",
+              "value": 0,
+              "intensity": 0.0
+            }
+          ],
+          [
+            {
+              "row": 4,
+              "col": 1,
+              "row_label": "UBB_4",
+              "col_label": "ASIC_1",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 4,
+              "col": 2,
+              "row_label": "UBB_4",
+              "col_label": "ASIC_2",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 4,
+              "col": 3,
+              "row_label": "UBB_4",
+              "col_label": "ASIC_3",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 4,
+              "col": 4,
+              "row_label": "UBB_4",
+              "col_label": "ASIC_4",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 4,
+              "col": 5,
+              "row_label": "UBB_4",
+              "col_label": "ASIC_5",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 4,
+              "col": 6,
+              "row_label": "UBB_4",
+              "col_label": "ASIC_6",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 4,
+              "col": 7,
+              "row_label": "UBB_4",
+              "col_label": "ASIC_7",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 4,
+              "col": 8,
+              "row_label": "UBB_4",
+              "col_label": "ASIC_8",
+              "value": 0,
+              "intensity": 0.0
+            }
+          ]
+        ],
+        "max_value": 1,
+        "title": "UBB vs ASIC - Failure Counts",
+        "row_count": 4,
+        "col_count": 8,
+        "row_labels": [
+          "UBB_1",
+          "UBB_2",
+          "UBB_3",
+          "UBB_4"
+        ],
+        "col_labels": [
+          "ASIC_1",
+          "ASIC_2",
+          "ASIC_3",
+          "ASIC_4",
+          "ASIC_5",
+          "ASIC_6",
+          "ASIC_7",
+          "ASIC_8"
+        ],
+        "clean_col_labels": [
+          "A1",
+          "A2",
+          "A3",
+          "A4",
+          "A5",
+          "A6",
+          "A7",
+          "A8"
+        ]
+      },
+      "heat_map_asic_eth_units": {
+        "matrix": [],
+        "max_value": 0,
+        "title": "ASIC vs ETH - Affected Units",
+        "row_count": 0,
+        "col_count": 0,
+        "row_labels": [],
+        "col_labels": [],
+        "clean_col_labels": []
+      },
+      "heat_map_asic_eth_failures": {
+        "matrix": [],
+        "max_value": 0,
+        "title": "ASIC vs ETH - Failure Counts",
+        "row_count": 0,
+        "col_count": 0,
+        "row_labels": [],
+        "col_labels": [],
+        "clean_col_labels": []
+      },
+      "heat_map_asic_controller_units": {
+        "matrix": [],
+        "max_value": 0,
+        "title": "ASIC vs Controller - Affected Units",
+        "row_count": 0,
+        "col_count": 0,
+        "row_labels": [],
+        "col_labels": [],
+        "clean_col_labels": []
+      },
+      "heat_map_asic_controller_failures": {
+        "matrix": [],
+        "max_value": 0,
+        "title": "ASIC vs Controller - Failure Counts",
+        "row_count": 0,
+        "col_count": 0,
+        "row_labels": [],
+        "col_labels": [],
+        "clean_col_labels": []
+      },
+      "heat_map_ubb_controller_units": {
+        "matrix": [],
+        "max_value": 0,
+        "title": "UBB vs Controller - Affected Units",
+        "row_count": 0,
+        "col_count": 0,
+        "row_labels": [],
+        "col_labels": [],
+        "clean_col_labels": []
+      },
+      "heat_map_ubb_controller_failures": {
+        "matrix": [],
+        "max_value": 0,
+        "title": "UBB vs Controller - Failure Counts",
+        "row_count": 0,
+        "col_count": 0,
+        "row_labels": [],
+        "col_labels": [],
+        "clean_col_labels": []
+      },
+      "heat_map_ubb_eth_units": {
+        "matrix": [],
+        "max_value": 0,
+        "title": "UBB vs ETH - Affected Units",
+        "row_count": 0,
+        "col_count": 0,
+        "row_labels": [],
+        "col_labels": [],
+        "clean_col_labels": []
+      },
+      "heat_map_ubb_eth_failures": {
+        "matrix": [],
+        "max_value": 0,
+        "title": "UBB vs ETH - Failure Counts",
+        "row_count": 0,
+        "col_count": 0,
+        "row_labels": [],
+        "col_labels": [],
+        "clean_col_labels": []
+      },
+      "heat_map_ctrl_eth_units": {
+        "matrix": [],
+        "max_value": 0,
+        "title": "Controller vs ETH - Affected Units",
+        "row_count": 0,
+        "col_count": 0,
+        "row_labels": [],
+        "col_labels": [],
+        "clean_col_labels": []
+      },
+      "heat_map_ctrl_eth_failures": {
+        "matrix": [],
+        "max_value": 0,
+        "title": "Controller vs ETH - Failure Counts",
+        "row_count": 0,
+        "col_count": 0,
+        "row_labels": [],
+        "col_labels": [],
+        "clean_col_labels": []
+      },
+      "visual_cards": [
+        {
+          "title": "Total Units: 1",
+          "count": 1,
+          "severity": "high",
+          "icon": "\ud83d\udcca",
+          "color": "#3498db"
+        },
+        {
+          "title": "Total Failures: 1",
+          "count": 1,
+          "severity": "medium",
+          "icon": "\u26a0\ufe0f",
+          "color": "#e74c3c"
+        },
+        {
+          "title": "UBB_3 + ASIC_3",
+          "count": 1,
+          "severity": "low",
+          "icon": "\ud83d\udd0c",
+          "color": "#2ecc71"
+        }
+      ],
+      "summary_insights": [
+        {
+          "icon": "\ud83d\udea8",
+          "title": "UBB 3 Critical",
+          "description": "UBB 3 shows 100% failure rate (1 failures) - needs immediate attention",
+          "severity": "extreme"
+        },
+        {
+          "icon": "\ud83d\udea8",
+          "title": "ASIC 3 Critical",
+          "description": "ASIC 3 shows 100% failure rate (1 failures) - focus required",
+          "severity": "extreme"
+        }
+      ]
+    },
+    {
+      "jira_entry": "QUAN-370",
+      "jira_summary": "AISC lost issue",
+      "affected_units": 1,
+      "failure_counts": 2,
+      "failure_rate": "1.75%",
+      "description": "AISC lost issue",
+      "category": "other",
+      "has_test_data": true,
+      "notes": "With the CPLD reset timing fix for the retimer, 350 reset cycles have passed on two QRDC systems, but the issue is still seen at production line. 5 units (1.80%) affected since UBB Rev 8 build. Jira History: QUAN-364 - failure rate with MRISC FW 2.9 down to ~1%.",
+      "error_types": [
+        "From QUAN-370"
+      ],
+      "unique_serials_affected": 1,
+      "apy_affected_units": 1,
+      "ubb_distribution_units": {
+        "UBB_1": 1,
+        "UBB_2": 0,
+        "UBB_3": 0,
+        "UBB_4": 0
+      },
+      "ubb_distribution_failures": {
+        "UBB_1": 2,
+        "UBB_2": 0,
+        "UBB_3": 0,
+        "UBB_4": 0
+      },
+      "ubb_percentages_units": {
+        "UBB_1": 100.0,
+        "UBB_2": 0.0,
+        "UBB_3": 0.0,
+        "UBB_4": 0.0
+      },
+      "ubb_percentages_failures": {
+        "UBB_1": 100.0,
+        "UBB_2": 0.0,
+        "UBB_3": 0.0,
+        "UBB_4": 0.0
+      },
+      "ubb_sorted_keys": [
+        "UBB_1",
+        "UBB_2",
+        "UBB_3",
+        "UBB_4"
+      ],
+      "asic_distribution_units": {
+        "ASIC_1": 0,
+        "ASIC_2": 1,
+        "ASIC_3": 0,
+        "ASIC_4": 0,
+        "ASIC_5": 0,
+        "ASIC_6": 0,
+        "ASIC_7": 0,
+        "ASIC_8": 0
+      },
+      "asic_distribution_failures": {
+        "ASIC_1": 0,
+        "ASIC_2": 3,
+        "ASIC_3": 0,
+        "ASIC_4": 0,
+        "ASIC_5": 0,
+        "ASIC_6": 0,
+        "ASIC_7": 0,
+        "ASIC_8": 0
+      },
+      "asic_percentages_units": {
+        "ASIC_1": 0.0,
+        "ASIC_2": 100.0,
+        "ASIC_3": 0.0,
+        "ASIC_4": 0.0,
+        "ASIC_5": 0.0,
+        "ASIC_6": 0.0,
+        "ASIC_7": 0.0,
+        "ASIC_8": 0.0
+      },
+      "asic_percentages_failures": {
+        "ASIC_1": 0.0,
+        "ASIC_2": 100.0,
+        "ASIC_3": 0.0,
+        "ASIC_4": 0.0,
+        "ASIC_5": 0.0,
+        "ASIC_6": 0.0,
+        "ASIC_7": 0.0,
+        "ASIC_8": 0.0
+      },
+      "asic_sorted_keys": [
+        "ASIC_1",
+        "ASIC_2",
+        "ASIC_3",
+        "ASIC_4",
+        "ASIC_5",
+        "ASIC_6",
+        "ASIC_7",
+        "ASIC_8"
+      ],
+      "controller_distribution_units": {},
+      "controller_distribution_failures": {},
+      "controller_percentages_units": {},
+      "controller_percentages_failures": {},
+      "controller_sorted_keys": [],
+      "eth_distribution_units": {},
+      "eth_distribution_failures": {},
+      "eth_percentages_units": {},
+      "eth_percentages_failures": {},
+      "eth_sorted_keys": [],
+      "heat_map_ubb_asic_units": {
+        "matrix": [
+          [
+            {
+              "row": 1,
+              "col": 1,
+              "row_label": "UBB_1",
+              "col_label": "ASIC_1",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 1,
+              "col": 2,
+              "row_label": "UBB_1",
+              "col_label": "ASIC_2",
+              "value": 1,
+              "intensity": 1.0
+            },
+            {
+              "row": 1,
+              "col": 3,
+              "row_label": "UBB_1",
+              "col_label": "ASIC_3",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 1,
+              "col": 4,
+              "row_label": "UBB_1",
+              "col_label": "ASIC_4",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 1,
+              "col": 5,
+              "row_label": "UBB_1",
+              "col_label": "ASIC_5",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 1,
+              "col": 6,
+              "row_label": "UBB_1",
+              "col_label": "ASIC_6",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 1,
+              "col": 7,
+              "row_label": "UBB_1",
+              "col_label": "ASIC_7",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 1,
+              "col": 8,
+              "row_label": "UBB_1",
+              "col_label": "ASIC_8",
+              "value": 0,
+              "intensity": 0.0
+            }
+          ],
+          [
+            {
+              "row": 2,
+              "col": 1,
+              "row_label": "UBB_2",
+              "col_label": "ASIC_1",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 2,
+              "col": 2,
+              "row_label": "UBB_2",
+              "col_label": "ASIC_2",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 2,
+              "col": 3,
+              "row_label": "UBB_2",
+              "col_label": "ASIC_3",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 2,
+              "col": 4,
+              "row_label": "UBB_2",
+              "col_label": "ASIC_4",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 2,
+              "col": 5,
+              "row_label": "UBB_2",
+              "col_label": "ASIC_5",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 2,
+              "col": 6,
+              "row_label": "UBB_2",
+              "col_label": "ASIC_6",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 2,
+              "col": 7,
+              "row_label": "UBB_2",
+              "col_label": "ASIC_7",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 2,
+              "col": 8,
+              "row_label": "UBB_2",
+              "col_label": "ASIC_8",
+              "value": 0,
+              "intensity": 0.0
+            }
+          ],
+          [
+            {
+              "row": 3,
+              "col": 1,
+              "row_label": "UBB_3",
+              "col_label": "ASIC_1",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 3,
+              "col": 2,
+              "row_label": "UBB_3",
+              "col_label": "ASIC_2",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 3,
+              "col": 3,
+              "row_label": "UBB_3",
+              "col_label": "ASIC_3",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 3,
+              "col": 4,
+              "row_label": "UBB_3",
+              "col_label": "ASIC_4",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 3,
+              "col": 5,
+              "row_label": "UBB_3",
+              "col_label": "ASIC_5",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 3,
+              "col": 6,
+              "row_label": "UBB_3",
+              "col_label": "ASIC_6",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 3,
+              "col": 7,
+              "row_label": "UBB_3",
+              "col_label": "ASIC_7",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 3,
+              "col": 8,
+              "row_label": "UBB_3",
+              "col_label": "ASIC_8",
+              "value": 0,
+              "intensity": 0.0
+            }
+          ],
+          [
+            {
+              "row": 4,
+              "col": 1,
+              "row_label": "UBB_4",
+              "col_label": "ASIC_1",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 4,
+              "col": 2,
+              "row_label": "UBB_4",
+              "col_label": "ASIC_2",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 4,
+              "col": 3,
+              "row_label": "UBB_4",
+              "col_label": "ASIC_3",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 4,
+              "col": 4,
+              "row_label": "UBB_4",
+              "col_label": "ASIC_4",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 4,
+              "col": 5,
+              "row_label": "UBB_4",
+              "col_label": "ASIC_5",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 4,
+              "col": 6,
+              "row_label": "UBB_4",
+              "col_label": "ASIC_6",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 4,
+              "col": 7,
+              "row_label": "UBB_4",
+              "col_label": "ASIC_7",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 4,
+              "col": 8,
+              "row_label": "UBB_4",
+              "col_label": "ASIC_8",
+              "value": 0,
+              "intensity": 0.0
+            }
+          ]
+        ],
+        "max_value": 1,
+        "title": "UBB vs ASIC - Affected Units",
+        "row_count": 4,
+        "col_count": 8,
+        "row_labels": [
+          "UBB_1",
+          "UBB_2",
+          "UBB_3",
+          "UBB_4"
+        ],
+        "col_labels": [
+          "ASIC_1",
+          "ASIC_2",
+          "ASIC_3",
+          "ASIC_4",
+          "ASIC_5",
+          "ASIC_6",
+          "ASIC_7",
+          "ASIC_8"
+        ],
+        "clean_col_labels": [
+          "A1",
+          "A2",
+          "A3",
+          "A4",
+          "A5",
+          "A6",
+          "A7",
+          "A8"
+        ]
+      },
+      "heat_map_ubb_asic_failures": {
+        "matrix": [
+          [
+            {
+              "row": 1,
+              "col": 1,
+              "row_label": "UBB_1",
+              "col_label": "ASIC_1",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 1,
+              "col": 2,
+              "row_label": "UBB_1",
+              "col_label": "ASIC_2",
+              "value": 2,
+              "intensity": 1.0
+            },
+            {
+              "row": 1,
+              "col": 3,
+              "row_label": "UBB_1",
+              "col_label": "ASIC_3",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 1,
+              "col": 4,
+              "row_label": "UBB_1",
+              "col_label": "ASIC_4",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 1,
+              "col": 5,
+              "row_label": "UBB_1",
+              "col_label": "ASIC_5",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 1,
+              "col": 6,
+              "row_label": "UBB_1",
+              "col_label": "ASIC_6",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 1,
+              "col": 7,
+              "row_label": "UBB_1",
+              "col_label": "ASIC_7",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 1,
+              "col": 8,
+              "row_label": "UBB_1",
+              "col_label": "ASIC_8",
+              "value": 0,
+              "intensity": 0.0
+            }
+          ],
+          [
+            {
+              "row": 2,
+              "col": 1,
+              "row_label": "UBB_2",
+              "col_label": "ASIC_1",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 2,
+              "col": 2,
+              "row_label": "UBB_2",
+              "col_label": "ASIC_2",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 2,
+              "col": 3,
+              "row_label": "UBB_2",
+              "col_label": "ASIC_3",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 2,
+              "col": 4,
+              "row_label": "UBB_2",
+              "col_label": "ASIC_4",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 2,
+              "col": 5,
+              "row_label": "UBB_2",
+              "col_label": "ASIC_5",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 2,
+              "col": 6,
+              "row_label": "UBB_2",
+              "col_label": "ASIC_6",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 2,
+              "col": 7,
+              "row_label": "UBB_2",
+              "col_label": "ASIC_7",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 2,
+              "col": 8,
+              "row_label": "UBB_2",
+              "col_label": "ASIC_8",
+              "value": 0,
+              "intensity": 0.0
+            }
+          ],
+          [
+            {
+              "row": 3,
+              "col": 1,
+              "row_label": "UBB_3",
+              "col_label": "ASIC_1",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 3,
+              "col": 2,
+              "row_label": "UBB_3",
+              "col_label": "ASIC_2",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 3,
+              "col": 3,
+              "row_label": "UBB_3",
+              "col_label": "ASIC_3",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 3,
+              "col": 4,
+              "row_label": "UBB_3",
+              "col_label": "ASIC_4",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 3,
+              "col": 5,
+              "row_label": "UBB_3",
+              "col_label": "ASIC_5",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 3,
+              "col": 6,
+              "row_label": "UBB_3",
+              "col_label": "ASIC_6",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 3,
+              "col": 7,
+              "row_label": "UBB_3",
+              "col_label": "ASIC_7",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 3,
+              "col": 8,
+              "row_label": "UBB_3",
+              "col_label": "ASIC_8",
+              "value": 0,
+              "intensity": 0.0
+            }
+          ],
+          [
+            {
+              "row": 4,
+              "col": 1,
+              "row_label": "UBB_4",
+              "col_label": "ASIC_1",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 4,
+              "col": 2,
+              "row_label": "UBB_4",
+              "col_label": "ASIC_2",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 4,
+              "col": 3,
+              "row_label": "UBB_4",
+              "col_label": "ASIC_3",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 4,
+              "col": 4,
+              "row_label": "UBB_4",
+              "col_label": "ASIC_4",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 4,
+              "col": 5,
+              "row_label": "UBB_4",
+              "col_label": "ASIC_5",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 4,
+              "col": 6,
+              "row_label": "UBB_4",
+              "col_label": "ASIC_6",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 4,
+              "col": 7,
+              "row_label": "UBB_4",
+              "col_label": "ASIC_7",
+              "value": 0,
+              "intensity": 0.0
+            },
+            {
+              "row": 4,
+              "col": 8,
+              "row_label": "UBB_4",
+              "col_label": "ASIC_8",
+              "value": 0,
+              "intensity": 0.0
+            }
+          ]
+        ],
+        "max_value": 2,
+        "title": "UBB vs ASIC - Failure Counts",
+        "row_count": 4,
+        "col_count": 8,
+        "row_labels": [
+          "UBB_1",
+          "UBB_2",
+          "UBB_3",
+          "UBB_4"
+        ],
+        "col_labels": [
+          "ASIC_1",
+          "ASIC_2",
+          "ASIC_3",
+          "ASIC_4",
+          "ASIC_5",
+          "ASIC_6",
+          "ASIC_7",
+          "ASIC_8"
+        ],
+        "clean_col_labels": [
+          "A1",
+          "A2",
+          "A3",
+          "A4",
+          "A5",
+          "A6",
+          "A7",
+          "A8"
+        ]
+      },
+      "heat_map_asic_eth_units": {
+        "matrix": [],
+        "max_value": 0,
+        "title": "ASIC vs ETH - Affected Units",
+        "row_count": 0,
+        "col_count": 0,
+        "row_labels": [],
+        "col_labels": [],
+        "clean_col_labels": []
+      },
+      "heat_map_asic_eth_failures": {
+        "matrix": [],
+        "max_value": 0,
+        "title": "ASIC vs ETH - Failure Counts",
+        "row_count": 0,
+        "col_count": 0,
+        "row_labels": [],
+        "col_labels": [],
+        "clean_col_labels": []
+      },
+      "heat_map_asic_controller_units": {
+        "matrix": [],
+        "max_value": 0,
+        "title": "ASIC vs Controller - Affected Units",
+        "row_count": 0,
+        "col_count": 0,
+        "row_labels": [],
+        "col_labels": [],
+        "clean_col_labels": []
+      },
+      "heat_map_asic_controller_failures": {
+        "matrix": [],
+        "max_value": 0,
+        "title": "ASIC vs Controller - Failure Counts",
+        "row_count": 0,
+        "col_count": 0,
+        "row_labels": [],
+        "col_labels": [],
+        "clean_col_labels": []
+      },
+      "heat_map_ubb_controller_units": {
+        "matrix": [],
+        "max_value": 0,
+        "title": "UBB vs Controller - Affected Units",
+        "row_count": 0,
+        "col_count": 0,
+        "row_labels": [],
+        "col_labels": [],
+        "clean_col_labels": []
+      },
+      "heat_map_ubb_controller_failures": {
+        "matrix": [],
+        "max_value": 0,
+        "title": "UBB vs Controller - Failure Counts",
+        "row_count": 0,
+        "col_count": 0,
+        "row_labels": [],
+        "col_labels": [],
+        "clean_col_labels": []
+      },
+      "heat_map_ubb_eth_units": {
+        "matrix": [],
+        "max_value": 0,
+        "title": "UBB vs ETH - Affected Units",
+        "row_count": 0,
+        "col_count": 0,
+        "row_labels": [],
+        "col_labels": [],
+        "clean_col_labels": []
+      },
+      "heat_map_ubb_eth_failures": {
+        "matrix": [],
+        "max_value": 0,
+        "title": "UBB vs ETH - Failure Counts",
+        "row_count": 0,
+        "col_count": 0,
+        "row_labels": [],
+        "col_labels": [],
+        "clean_col_labels": []
+      },
+      "heat_map_ctrl_eth_units": {
+        "matrix": [],
+        "max_value": 0,
+        "title": "Controller vs ETH - Affected Units",
+        "row_count": 0,
+        "col_count": 0,
+        "row_labels": [],
+        "col_labels": [],
+        "clean_col_labels": []
+      },
+      "heat_map_ctrl_eth_failures": {
+        "matrix": [],
+        "max_value": 0,
+        "title": "Controller vs ETH - Failure Counts",
+        "row_count": 0,
+        "col_count": 0,
+        "row_labels": [],
+        "col_labels": [],
+        "clean_col_labels": []
+      },
+      "visual_cards": [
+        {
+          "title": "Total Units: 1",
+          "count": 1,
+          "severity": "high",
+          "icon": "\ud83d\udcca",
+          "color": "#3498db"
+        },
+        {
+          "title": "Total Failures: 2",
+          "count": 2,
+          "severity": "medium",
+          "icon": "\u26a0\ufe0f",
+          "color": "#e74c3c"
+        },
+        {
+          "title": "UBB_1 + ASIC_2",
+          "count": 2,
+          "severity": "medium",
+          "icon": "\ud83d\udd0c",
+          "color": "#f39c12"
+        }
+      ],
+      "summary_insights": [
+        {
+          "icon": "\ud83d\udea8",
+          "title": "UBB 1 Critical",
+          "description": "UBB 1 shows 67% failure rate (2 failures) - needs immediate attention",
+          "severity": "extreme"
+        },
+        {
+          "icon": "\ud83d\udea8",
+          "title": "ASIC 2 Critical",
+          "description": "ASIC 2 shows 100% failure rate (3 failures) - focus required",
+          "severity": "extreme"
+        }
+      ]
+    }
+  ],
+  "yield_hitters_summary": {
+    "total_yield_hitters": 6,
+    "entries_with_test_data": 6,
+    "entries_without_test_data": 0,
+    "total_affected_units": 11,
+    "total_failure_counts": 37,
+    "major_hitters": 0,
+    "minor_hitters": 6
+  },
+  "overall_distributions": {
+    "ubb_distribution": {
+      "UBB_1": 30,
+      "UBB_2": 0,
+      "UBB_3": 3,
+      "UBB_4": 4
+    },
+    "asic_distribution": {
+      "ASIC_1": 3,
+      "ASIC_2": 4,
+      "ASIC_3": 2,
+      "ASIC_4": 26,
+      "ASIC_5": 2,
+      "ASIC_6": 0,
+      "ASIC_7": 1,
+      "ASIC_8": 0
+    },
+    "eth_distribution": {
+      "ETH 1": 1,
+      "ETH 3": 1,
+      "ETH 7": 1,
+      "ETH 9": 1,
+      "ETH 11": 1
+    },
+    "controller_distribution": {
+      "Controller C": 1,
+      "Controller H": 5
+    },
+    "total_failures": 37
+  }
+};
+    </script>
+    <script src="app.js"></script>
+
+        <script>
+        function initializeOverallDistributionCharts() {
+            const overallData = dashboardData.overall_distributions;
+            if (!overallData) return;
+
+            function createChart(canvasId, labels, data, color) {
+                const canvas = document.getElementById(canvasId);
+                if (!canvas) return;
+                const ctx = canvas.getContext('2d');
+                new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: labels,
+                        datasets: [{ data: data, backgroundColor: color, borderColor: color }]
+                    },
+                    options: {
+                        responsive: true,
+                        scales: { y: { beginAtZero: true } },
+                        plugins: { legend: { display: false } }
+                    }
+                });
+            }
+
+            if (overallData.ubb_distribution) {
+                createChart('overallUbbChart', Object.keys(overallData.ubb_distribution), Object.values(overallData.ubb_distribution), '#e74c3c');
+            }
+            if (overallData.asic_distribution) {
+                createChart('overallAsicChart', Object.keys(overallData.asic_distribution), Object.values(overallData.asic_distribution), '#3498db');
+            }
+            if (overallData.eth_distribution && Object.keys(overallData.eth_distribution).length) {
+                createChart('overallEthChart', Object.keys(overallData.eth_distribution), Object.values(overallData.eth_distribution), '#2ecc71');
+            }
+            if (overallData.controller_distribution && Object.keys(overallData.controller_distribution).length) {
+                createChart('overallControllerChart', Object.keys(overallData.controller_distribution), Object.values(overallData.controller_distribution), '#f39c12');
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            setTimeout(initializeOverallDistributionCharts, 1000);
+        });
+        </script></body>
+</html>

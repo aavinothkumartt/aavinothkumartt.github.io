@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manufacturing Yield Dashboard V1.3</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1e2a3a 0%, #2d3e50 100%);
+            color: #e8e8e8; padding: 15px; min-height: 100vh;
+        }
+        .container { max-width: 1900px; margin: 0 auto; }
+        h1 { text-align: center; color: #4fc3f7; margin-bottom: 20px; font-size: 2em; text-shadow: 2px 2px 4px rgba(0,0,0,0.3); }
+        .row { display: flex; gap: 15px; margin-bottom: 15px; }
+        .section { background: rgba(44, 62, 80, 0.9); border-radius: 10px; padding: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.3); margin-bottom: 15px; }
+        .half { flex: 1; min-width: 0; }
+        .section-title { color: #4fc3f7; font-size: 1.4em; margin-bottom: 12px; border-bottom: 2px solid #4fc3f7; padding-bottom: 6px; }
+        .controls { display: flex; gap: 15px; margin-bottom: 12px; flex-wrap: wrap; }
+        .control-group { flex: 1; min-width: 180px; }
+        label { display: block; color: #b0c4de; margin-bottom: 6px; font-weight: 500; font-size: 0.9em; }
+        select, button { width: 100%; padding: 8px; background: #34495e; color: #e8e8e8; border: 1px solid #4fc3f7; border-radius: 5px; font-size: 13px; cursor: pointer; transition: all 0.3s; }
+        select:hover, button:hover { background: #3d566e; border-color: #81d4fa; }
+        select:focus { outline: none; border-color: #29b6f6; box-shadow: 0 0 8px rgba(79, 195, 247, 0.3); }
+        .chart-container { background: #2c3e50; border-radius: 8px; padding: 12px; margin-top: 10px; height: 280px; }
+        canvas { max-width: 100%; max-height: 260px !important; }
+        .heatmap-container { overflow-x: auto; margin-top: 10px; max-height: 400px; }
+        .heatmap-table { width: 100%; border-collapse: collapse; background: #2c3e50; border-radius: 8px; overflow: hidden; font-size: 12px; }
+        .heatmap-table th, .heatmap-table td { padding: 8px; text-align: center; border: 1px solid #34495e; }
+        .heatmap-table th { background: #1a252f; color: #4fc3f7; font-weight: 600; position: sticky; top: 0; }
+        .heatmap-table td { color: #e8e8e8; transition: all 0.2s; }
+        .heatmap-table td:hover { transform: scale(1.05); z-index: 10; box-shadow: 0 0 12px rgba(79, 195, 247, 0.5); }
+        .heatmap-cell { font-weight: bold; }
+        .summary-table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 13px; }
+        .summary-table th, .summary-table td { padding: 8px; text-align: left; border-bottom: 1px solid #34495e; }
+        .summary-table th { background: #1a252f; color: #4fc3f7; font-weight: 600; }
+        .summary-table tr:hover { background: #34495e; }
+        .no-data { text-align: center; color: #7f8c8d; padding: 30px; font-style: italic; font-size: 0.95em; }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 12px;
+            margin-top: 12px;
+        }
+        .stat-card {
+            background: linear-gradient(135deg, #34495e 0%, #2c3e50 100%);
+            border-radius: 8px;
+            padding: 12px;
+            text-align: center;
+            border: 1px solid #4fc3f7;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .stat-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(79, 195, 247, 0.3);
+        }
+        .stat-label {
+            color: #b0c4de;
+            font-size: 0.85em;
+            font-weight: 500;
+            margin-bottom: 6px;
+        }
+        .stat-value {
+            color: #4fc3f7;
+            font-size: 1.6em;
+            font-weight: bold;
+        }
+        @media (max-width: 1200px) { .row { flex-direction: column; } .half { width: 100%; } }
+        @media (max-width: 768px) { h1 { font-size: 1.6em; } .controls { flex-direction: column; } .control-group { min-width: 100%; } .chart-container { height: 200px; } }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📊 Manufacturing Yield Dashboard V1.3</h1>
+
+        <!-- Overall Statistics -->
+        <div class="section">
+            <h2 class="section-title">Overall Statistics (All Builds)</h2>
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-label">Total Units</div>
+                    <div class="stat-value" id="statTotalUnits">-</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Passed (FPY)</div>
+                    <div class="stat-value" id="statPassed">-</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Fixed</div>
+                    <div class="stat-value" id="statFixed">-</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Failed</div>
+                    <div class="stat-value" id="statFailed">-</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Overall FPY</div>
+                    <div class="stat-value" id="statFPY">-</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Overall APY</div>
+                    <div class="stat-value" id="statAPY">-</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="section half">
+                <h2 class="section-title">APY & FPY Trends</h2>
+                <div class="chart-container"><canvas id="yieldChart"></canvas></div>
+            </div>
+            <div class="section half">
+                <h2 class="section-title">Jira Trend Analysis</h2>
+                <div class="controls">
+                    <div class="control-group">
+                        <label for="jiraTrendSelect">Select Jira Entries (Cmd/Ctrl + Click):</label>
+                        <select id="jiraTrendSelect" multiple size="4"></select>
+                    </div>
+                </div>
+                <div class="chart-container"><canvas id="jiraTrendChart"></canvas></div>
+            </div>
+        </div>
+        <div class="row">
+            <div class="section half">
+                <h2 class="section-title">Component Failure Heatmaps</h2>
+                <div class="controls">
+                    <div class="control-group">
+                        <label for="heatmapJiraSelect">Jira Entry:</label>
+                        <select id="heatmapJiraSelect"></select>
+                    </div>
+                    <div class="control-group">
+                        <label for="heatmapTypeSelect">Heatmap Type:</label>
+                        <select id="heatmapTypeSelect"></select>
+                    </div>
+                </div>
+                <div id="heatmapDisplay" class="heatmap-container"></div>
+            </div>
+            <div class="section half">
+                <h2 class="section-title">Jira Summary Statistics</h2>
+                <div style="overflow-x: auto; max-height: 450px; overflow-y: auto;">
+                    <table class="summary-table" id="summaryTable"></table>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
+    <script>
+        const overallStats = {"totalUnits": 434, "passed": 338, "fixed": 39, "failed": 57, "overallAPY": 86.87, "overallFPY": 77.88};
+            const jiraMapping = {"QUAN-488": "Eth training failures OVER 40% tolerance", "WAIVED - QUAN-371": "Eth training failures UNDER 40% tolerance", "QUAN-371": "Eth training failures UNDER 40% tolerance", "QUAN-487": "PCIe downgrade issue detected during BHFT and pre-test", "Need Jira": "DDR test failure at all controllers", "WAIVED - QUAN-518": "Eth test failure - E33 TIMEOUT", "QUAN-518": "Eth test failure - E33 TIMEOUT", "QUAN-370": "AISC lost issue", "QUAN-519": "DDR Training EC failure at 14G", "DONE - QUAN-363": "ASIC EFUSE FAIL", "QUAN-363": "ASIC EFUSE FAIL", "DONE - QUAN-367": "PCIE DMA failure - E18", "QUAN-367": "PCIE DMA failure - E18", "DONE - QUAN-368": "noc_access_check failure - E21", "QUAN-368": "noc_access_check failure - E21", "DONE - QUAN-369": "multi_core_tensix_test failure - E33", "QUAN-369": "multi_core_tensix_test failure - E33", "DONE - QUAN-365": "Chip Initialization Fail - EL", "QUAN-365": "Chip Initialization Fail - EL", "QUAN-524": "ASIC initialization failed - EFRDY", "QUAN-366": "DDR Training ET failure at 14G", "QUAN-503": "p300x ft_ddr_stress with error: DDR_TRAIN_FAIL", "QUAN-237": "ASIC PCIe link downgrade detected", "QUAN-177": "BER issues", "QUAN-176": "DRAM EC# error failed at 14G speed.", "QUAN-211": "DRAM 14G/12G Fail", "QUAN-204": "DUMMY PACKET issues", "QUAN-401": "DDR Training failure - ET", "QUAN-210": "DRAM training failure - EM", "Need Jira - PCIe DMA": "PCIE DMA failure - E18", "QUAN-284": "FT_BURNIN - tmon_max exceeds the threshold", "QUAN-178": "ETH failure on long trace on multiple systems", "QUAN-179": "link error TIMEOUT_AN_ATTEMPTS observed in ETH idle test", "QUAN-238": "ETH_STREAM_APP_FAIL - timed out data", "Need Jira - Uncorrected codewords": "ETH_STREAM_APP_FAIL - Uncorrected codewords", "QUAN-436": "ETH stream failure - completed but data error", "QUAN-235": "TIMEOUT_PG_RCV issues were observed during the ETH idle test", "NTF - Eth": "Training Failed ETH", "QUAN-545": "Detect temperature over limitation - hard Failure", "QUAN-537": "Detect temperature over limitation - repass", "QUAN-504": "PCIe Enumeration Failure", "NTF - EFRDY": "Error code shows FW is not ready", "QUAN-459": "Chip Initialization Failure", "QUAN-218": "EFUSE failure in BHFT PART1", "NTF - EC": "DDR test failure at some controllers", "NTF - ECX": "DDR test failure at all controllers", "Need Jira for U507 failure during I2C test": "Component U507 failed during I2C UBB TEST", "Need Jira for TMP75 failure during I2C Test": "Multiple TMP75 components failure during VR I2C TEST", "QUAN-265": "RT SPI Firmware Failure", "Need Jira for JUMPER_FORCE_POWER_ON_N": "Observed JUMPER_FORCE_POWER_ON_N during CPLD check", "DONE - QUAN-373": "PWRGR and FPGA VR components failures", "QUAN-373": "PWRGR and FPGA VR components failures", "Need Jira for ASIC alive with PWRGD": "ASIC VR I2C failure with PWRGD_VR_ASIC#", "QUAN-439": "ft_burnin test failed with error: HIGH_TEMPERATUE", "QUAN-146": "PCIe PCIe speed/width check ailure", "QUAN-546": "PCIe PCIe speed/width check hard failure", "NTF - QUAN-149": "p150x cards ethernet_loopback_test failed", "QUAN-149": "p150x cards ethernet_loopback_test failed", "QUAN-473": "DDR training failure(ET, EFRDY) on P150a and P150b", "DONE - QUAN-145": "p150b card check_pcie_dma failed", "QUAN-145": "p150b card check_pcie_dma failed", "NTF - EL": "Chip Initialization Failure", "WAD-1": "Missing OCP in the system", "WAD-2": "Missing OCP in the system", "WAD-3": "Missing OCP in the system", "WAD-4": "Missing OCP in the system", "Need Jira for FW upload timed out": "FW upload timeout during ARC_BMC_CPLD_UBB_FW_UPDATE", "Waived - Connection Problem": "#J203 QSFP-DD error during ARC_BMC_I2C_UBB_TEST", "QUAN-240": "ASIC PCIe enumeration failure.", "QUAN-285": "Thermal triip during burnin test.", "Need Jira - Sensor reading": "Sensors has no readings for ASIC TEMP and Power", "Need Jira - QSFP LED": " QSFP GREEN LEDs are ON which is unexpected.", "Need Jira - EFCMT": "EFCMT error code in TT_FIRMWARE test stage", "QUAN-570": "EC error dueing DRAM testing stage", "QUAN-651": "Unable to send RAW command to PHY# address", "Need Jira for CPU low performance.": "During CPU Performance check, it showed \"The result of current cpu performance (0.0) < Expected lower limit (6.0)\"", "Need Jira for FRB2 Hang during POST": "ASIC#_Stat: FRB2/Hang in POST failure. ", "QUAN-88": "The issue is caused by ALB not seated properly. Can be recovered by reseat", "Need Jira for E33 CRC error": "E33 CRC error observed during ETH_STREAM_APP_FAIL. ", "Need Jira for Front Panel Test Failed": "I2C - FP test Not Pass!", "Done for OCP Cable Connect Issue": "Client command execution error. Error: Failed to modify QP 6145 to RTR", "Need Jira for missing sensors": "Missing Fan and PDB sensors during ARC_BMC_SDR_PRESENT_CHECK", "Waived - Missing OCP in the system": "Missing OCP in the system", "Waived - CPLD Flash timeout": "FW Type: CPLD_UBB, Timeout: 180"};
+        const yieldData = [{"buildDate": "2025-07-16", "totalUnits": 60, "fpy": 56.67, "apy": 80.0, "passed": 34, "fixed": 14, "failed": 12}, {"buildDate": "2025-09-03", "totalUnits": 57, "fpy": 68.42, "apy": 71.93, "passed": 39, "fixed": 2, "failed": 16}, {"buildDate": "2025-09-17", "totalUnits": 40, "fpy": 72.5, "apy": 85.0, "passed": 29, "fixed": 5, "failed": 6}, {"buildDate": "2025-09-24", "totalUnits": 40, "fpy": 80.0, "apy": 82.5, "passed": 32, "fixed": 1, "failed": 7}, {"buildDate": "2025-10-01", "totalUnits": 80, "fpy": 86.25, "apy": 97.5, "passed": 69, "fixed": 9, "failed": 2}, {"buildDate": "2025-10-15", "totalUnits": 98, "fpy": 82.65, "apy": 90.82, "passed": 81, "fixed": 8, "failed": 9}, {"buildDate": "2025-10-22", "totalUnits": 59, "fpy": 91.53, "apy": 91.53, "passed": 54, "fixed": 0, "failed": 5}];
+        const jiraTrendData = [{"buildDate": "2025-07-16", "jira": "QUAN-265", "count": 2}, {"buildDate": "2025-07-16", "jira": "QUAN-366", "count": 2}, {"buildDate": "2025-07-16", "jira": "QUAN-370", "count": 4}, {"buildDate": "2025-07-16", "jira": "QUAN-371", "count": 30}, {"buildDate": "2025-07-16", "jira": "QUAN-373", "count": 1}, {"buildDate": "2025-07-16", "jira": "QUAN-487", "count": 0}, {"buildDate": "2025-07-16", "jira": "QUAN-488", "count": 0}, {"buildDate": "2025-07-16", "jira": "QUAN-518", "count": 0}, {"buildDate": "2025-07-16", "jira": "QUAN-519", "count": 0}, {"buildDate": "2025-07-16", "jira": "QUAN-524", "count": 5}, {"buildDate": "2025-07-16", "jira": "QUAN-611", "count": 0}, {"buildDate": "2025-09-03", "jira": "QUAN-265", "count": 0}, {"buildDate": "2025-09-03", "jira": "QUAN-366", "count": 1}, {"buildDate": "2025-09-03", "jira": "QUAN-370", "count": 4}, {"buildDate": "2025-09-03", "jira": "QUAN-371", "count": 54}, {"buildDate": "2025-09-03", "jira": "QUAN-373", "count": 0}, {"buildDate": "2025-09-03", "jira": "QUAN-487", "count": 11}, {"buildDate": "2025-09-03", "jira": "QUAN-488", "count": 1}, {"buildDate": "2025-09-03", "jira": "QUAN-518", "count": 0}, {"buildDate": "2025-09-03", "jira": "QUAN-519", "count": 0}, {"buildDate": "2025-09-03", "jira": "QUAN-524", "count": 0}, {"buildDate": "2025-09-03", "jira": "QUAN-611", "count": 0}, {"buildDate": "2025-09-17", "jira": "QUAN-265", "count": 0}, {"buildDate": "2025-09-17", "jira": "QUAN-366", "count": 0}, {"buildDate": "2025-09-17", "jira": "QUAN-370", "count": 1}, {"buildDate": "2025-09-17", "jira": "QUAN-371", "count": 29}, {"buildDate": "2025-09-17", "jira": "QUAN-373", "count": 0}, {"buildDate": "2025-09-17", "jira": "QUAN-487", "count": 2}, {"buildDate": "2025-09-17", "jira": "QUAN-488", "count": 2}, {"buildDate": "2025-09-17", "jira": "QUAN-518", "count": 1}, {"buildDate": "2025-09-17", "jira": "QUAN-519", "count": 1}, {"buildDate": "2025-09-17", "jira": "QUAN-524", "count": 0}, {"buildDate": "2025-09-17", "jira": "QUAN-611", "count": 0}, {"buildDate": "2025-09-24", "jira": "QUAN-265", "count": 0}, {"buildDate": "2025-09-24", "jira": "QUAN-366", "count": 1}, {"buildDate": "2025-09-24", "jira": "QUAN-370", "count": 0}, {"buildDate": "2025-09-24", "jira": "QUAN-371", "count": 1}, {"buildDate": "2025-09-24", "jira": "QUAN-373", "count": 0}, {"buildDate": "2025-09-24", "jira": "QUAN-487", "count": 1}, {"buildDate": "2025-09-24", "jira": "QUAN-488", "count": 2}, {"buildDate": "2025-09-24", "jira": "QUAN-518", "count": 0}, {"buildDate": "2025-09-24", "jira": "QUAN-519", "count": 3}, {"buildDate": "2025-09-24", "jira": "QUAN-524", "count": 0}, {"buildDate": "2025-09-24", "jira": "QUAN-611", "count": 0}, {"buildDate": "2025-10-01", "jira": "QUAN-265", "count": 0}, {"buildDate": "2025-10-01", "jira": "QUAN-366", "count": 1}, {"buildDate": "2025-10-01", "jira": "QUAN-370", "count": 1}, {"buildDate": "2025-10-01", "jira": "QUAN-371", "count": 4}, {"buildDate": "2025-10-01", "jira": "QUAN-373", "count": 0}, {"buildDate": "2025-10-01", "jira": "QUAN-487", "count": 0}, {"buildDate": "2025-10-01", "jira": "QUAN-488", "count": 1}, {"buildDate": "2025-10-01", "jira": "QUAN-518", "count": 0}, {"buildDate": "2025-10-01", "jira": "QUAN-519", "count": 1}, {"buildDate": "2025-10-01", "jira": "QUAN-524", "count": 0}, {"buildDate": "2025-10-01", "jira": "QUAN-611", "count": 0}, {"buildDate": "2025-10-15", "jira": "QUAN-265", "count": 0}, {"buildDate": "2025-10-15", "jira": "QUAN-366", "count": 2}, {"buildDate": "2025-10-15", "jira": "QUAN-370", "count": 4}, {"buildDate": "2025-10-15", "jira": "QUAN-371", "count": 1}, {"buildDate": "2025-10-15", "jira": "QUAN-373", "count": 0}, {"buildDate": "2025-10-15", "jira": "QUAN-487", "count": 2}, {"buildDate": "2025-10-15", "jira": "QUAN-488", "count": 0}, {"buildDate": "2025-10-15", "jira": "QUAN-518", "count": 0}, {"buildDate": "2025-10-15", "jira": "QUAN-519", "count": 3}, {"buildDate": "2025-10-15", "jira": "QUAN-524", "count": 1}, {"buildDate": "2025-10-15", "jira": "QUAN-611", "count": 0}, {"buildDate": "2025-10-22", "jira": "QUAN-265", "count": 0}, {"buildDate": "2025-10-22", "jira": "QUAN-366", "count": 1}, {"buildDate": "2025-10-22", "jira": "QUAN-370", "count": 1}, {"buildDate": "2025-10-22", "jira": "QUAN-371", "count": 4}, {"buildDate": "2025-10-22", "jira": "QUAN-373", "count": 0}, {"buildDate": "2025-10-22", "jira": "QUAN-487", "count": 0}, {"buildDate": "2025-10-22", "jira": "QUAN-488", "count": 0}, {"buildDate": "2025-10-22", "jira": "QUAN-518", "count": 0}, {"buildDate": "2025-10-22", "jira": "QUAN-519", "count": 2}, {"buildDate": "2025-10-22", "jira": "QUAN-524", "count": 1}, {"buildDate": "2025-10-22", "jira": "QUAN-611", "count": 2}];
+        const jiraSummaryData = [{"jira": "QUAN-371", "fpyUnits": 154, "recovered": 31, "apyUnits": 123, "fpyRate": 35.48, "apyRate": 28.34}, {"jira": "QUAN-487", "fpyUnits": 25, "recovered": 9, "apyUnits": 16, "fpyRate": 5.76, "apyRate": 3.69}, {"jira": "QUAN-370", "fpyUnits": 17, "recovered": 2, "apyUnits": 15, "fpyRate": 3.92, "apyRate": 3.46}, {"jira": "QUAN-488", "fpyUnits": 13, "recovered": 7, "apyUnits": 6, "fpyRate": 3.0, "apyRate": 1.38}, {"jira": "QUAN-519", "fpyUnits": 13, "recovered": 3, "apyUnits": 10, "fpyRate": 3.0, "apyRate": 2.3}, {"jira": "QUAN-366", "fpyUnits": 10, "recovered": 2, "apyUnits": 8, "fpyRate": 2.3, "apyRate": 1.84}, {"jira": "QUAN-524", "fpyUnits": 8, "recovered": 1, "apyUnits": 7, "fpyRate": 1.84, "apyRate": 1.61}, {"jira": "QUAN-265", "fpyUnits": 4, "recovered": 2, "apyUnits": 2, "fpyRate": 0.92, "apyRate": 0.46}, {"jira": "QUAN-518", "fpyUnits": 2, "recovered": 1, "apyUnits": 1, "fpyRate": 0.46, "apyRate": 0.23}, {"jira": "QUAN-611", "fpyUnits": 2, "recovered": 0, "apyUnits": 2, "fpyRate": 0.46, "apyRate": 0.46}, {"jira": "QUAN-373", "fpyUnits": 1, "recovered": 0, "apyUnits": 1, "fpyRate": 0.23, "apyRate": 0.23}];
+        const allHeatmaps = {"UBB_ASIC": {"QUAN-366": {"UBB_1": {"A1": 0, "A2": 0, "A3": 0, "A4": 0, "A5": 0, "A6": 0, "A7": 0, "A8": 0}, "UBB_2": {"A1": 0, "A2": 0, "A3": 0, "A4": 0, "A5": 0, "A6": 0, "A7": 1, "A8": 0}, "UBB_3": {"A1": 5, "A2": 0, "A3": 1, "A4": 0, "A5": 0, "A6": 2, "A7": 5, "A8": 0}, "UBB_4": {"A1": 1, "A2": 5, "A3": 1, "A4": 4, "A5": 0, "A6": 0, "A7": 0, "A8": 0}}, "QUAN-370": {"UBB_1": {"A1": 0, "A2": 2, "A3": 0, "A4": 0, "A5": 0, "A6": 1, "A7": 2, "A8": 19}, "UBB_2": {"A1": 0, "A2": 0, "A3": 0, "A4": 2, "A5": 0, "A6": 19, "A7": 0, "A8": 5}, "UBB_3": {"A1": 0, "A2": 2, "A3": 0, "A4": 2, "A5": 0, "A6": 0, "A7": 6, "A8": 0}, "UBB_4": {"A1": 0, "A2": 0, "A3": 3, "A4": 0, "A5": 0, "A6": 0, "A7": 2, "A8": 38}}, "QUAN-371": {"UBB_1": {"A1": 33, "A2": 48, "A3": 47, "A4": 45, "A5": 34, "A6": 37, "A7": 53, "A8": 35}, "UBB_2": {"A1": 32, "A2": 30, "A3": 34, "A4": 31, "A5": 23, "A6": 34, "A7": 35, "A8": 56}, "UBB_3": {"A1": 28, "A2": 37, "A3": 33, "A4": 15, "A5": 35, "A6": 31, "A7": 33, "A8": 36}, "UBB_4": {"A1": 36, "A2": 33, "A3": 27, "A4": 21, "A5": 22, "A6": 23, "A7": 26, "A8": 28}}, "QUAN-487": {"UBB_1": {"A1": 1, "A2": 0, "A3": 0, "A4": 1, "A5": 1, "A6": 0, "A7": 0, "A8": 5}, "UBB_2": {"A1": 0, "A2": 0, "A3": 10, "A4": 0, "A5": 0, "A6": 0, "A7": 10, "A8": 8}, "UBB_3": {"A1": 0, "A2": 0, "A3": 0, "A4": 0, "A5": 0, "A6": 0, "A7": 0, "A8": 0}, "UBB_4": {"A1": 1, "A2": 0, "A3": 0, "A4": 0, "A5": 0, "A6": 0, "A7": 0, "A8": 0}}, "QUAN-488": {"UBB_1": {"A1": 0, "A2": 0, "A3": 0, "A4": 5, "A5": 10, "A6": 0, "A7": 0, "A8": 0}, "UBB_2": {"A1": 0, "A2": 10, "A3": 0, "A4": 5, "A5": 10, "A6": 0, "A7": 14, "A8": 20}, "UBB_3": {"A1": 0, "A2": 0, "A3": 0, "A4": 5, "A5": 0, "A6": 0, "A7": 0, "A8": 20}, "UBB_4": {"A1": 0, "A2": 0, "A3": 0, "A4": 25, "A5": 0, "A6": 10, "A7": 29, "A8": 5}}, "QUAN-518": {"UBB_1": {"A1": 0, "A2": 0, "A3": 0, "A4": 0, "A5": 0, "A6": 1, "A7": 0, "A8": 0}, "UBB_2": {"A1": 0, "A2": 0, "A3": 0, "A4": 0, "A5": 0, "A6": 0, "A7": 0, "A8": 0}, "UBB_3": {"A1": 0, "A2": 0, "A3": 0, "A4": 0, "A5": 0, "A6": 1, "A7": 0, "A8": 0}, "UBB_4": {"A1": 0, "A2": 0, "A3": 0, "A4": 0, "A5": 0, "A6": 0, "A7": 0, "A8": 0}}, "QUAN-519": {"UBB_1": {"A1": 0, "A2": 0, "A3": 0, "A4": 5, "A5": 0, "A6": 5, "A7": 0, "A8": 5}, "UBB_2": {"A1": 0, "A2": 0, "A3": 0, "A4": 0, "A5": 0, "A6": 5, "A7": 5, "A8": 0}, "UBB_3": {"A1": 0, "A2": 0, "A3": 1, "A4": 0, "A5": 15, "A6": 2, "A7": 0, "A8": 7}, "UBB_4": {"A1": 0, "A2": 2, "A3": 1, "A4": 5, "A5": 2, "A6": 6, "A7": 0, "A8": 0}}, "QUAN-524": {"UBB_1": {"A1": 0, "A2": 0, "A3": 0, "A4": 21, "A5": 0, "A6": 0, "A7": 0, "A8": 0}, "UBB_2": {"A1": 0, "A2": 1, "A3": 0, "A4": 0, "A5": 0, "A6": 0, "A7": 15, "A8": 0}, "UBB_3": {"A1": 1, "A2": 0, "A3": 0, "A4": 0, "A5": 0, "A6": 0, "A7": 0, "A8": 0}, "UBB_4": {"A1": 3, "A2": 1, "A3": 0, "A4": 0, "A5": 0, "A6": 0, "A7": 0, "A8": 1}}}, "UBB_ETH": {"QUAN-371": {"UBB_1": {"ETH0": 0, "ETH1": 39, "ETH2": 27, "ETH3": 43, "ETH4": 30, "ETH5": 0, "ETH6": 38, "ETH7": 45, "ETH8": 0, "ETH9": 57, "ETH10": 17, "ETH11": 11, "ETH12": 0, "ETH13": 0, "ETH14": 0, "ETH15": 0}, "UBB_2": {"ETH0": 0, "ETH1": 34, "ETH2": 33, "ETH3": 33, "ETH4": 36, "ETH5": 0, "ETH6": 34, "ETH7": 32, "ETH8": 1, "ETH9": 35, "ETH10": 17, "ETH11": 5, "ETH12": 0, "ETH13": 0, "ETH14": 0, "ETH15": 0}, "UBB_3": {"ETH0": 0, "ETH1": 24, "ETH2": 20, "ETH3": 30, "ETH4": 20, "ETH5": 1, "ETH6": 23, "ETH7": 37, "ETH8": 0, "ETH9": 48, "ETH10": 24, "ETH11": 7, "ETH12": 0, "ETH13": 0, "ETH14": 0, "ETH15": 0}, "UBB_4": {"ETH0": 0, "ETH1": 17, "ETH2": 22, "ETH3": 30, "ETH4": 18, "ETH5": 0, "ETH6": 23, "ETH7": 32, "ETH8": 0, "ETH9": 27, "ETH10": 14, "ETH11": 17, "ETH12": 0, "ETH13": 0, "ETH14": 0, "ETH15": 0}}, "QUAN-488": {"UBB_1": {"ETH0": 0, "ETH1": 0, "ETH2": 5, "ETH3": 5, "ETH4": 0, "ETH5": 0, "ETH6": 5, "ETH7": 0, "ETH8": 0, "ETH9": 0, "ETH10": 0, "ETH11": 0, "ETH12": 0, "ETH13": 0, "ETH14": 0, "ETH15": 0}, "UBB_2": {"ETH0": 0, "ETH1": 0, "ETH2": 5, "ETH3": 5, "ETH4": 5, "ETH5": 0, "ETH6": 10, "ETH7": 19, "ETH8": 0, "ETH9": 15, "ETH10": 0, "ETH11": 0, "ETH12": 0, "ETH13": 0, "ETH14": 0, "ETH15": 0}, "UBB_3": {"ETH0": 0, "ETH1": 0, "ETH2": 0, "ETH3": 0, "ETH4": 10, "ETH5": 0, "ETH6": 15, "ETH7": 0, "ETH8": 0, "ETH9": 0, "ETH10": 0, "ETH11": 0, "ETH12": 0, "ETH13": 0, "ETH14": 0, "ETH15": 0}, "UBB_4": {"ETH0": 0, "ETH1": 0, "ETH2": 0, "ETH3": 0, "ETH4": 10, "ETH5": 0, "ETH6": 15, "ETH7": 19, "ETH8": 0, "ETH9": 15, "ETH10": 10, "ETH11": 0, "ETH12": 0, "ETH13": 0, "ETH14": 0, "ETH15": 0}}, "QUAN-518": {"UBB_1": {"ETH0": 0, "ETH1": 0, "ETH2": 0, "ETH3": 0, "ETH4": 0, "ETH5": 0, "ETH6": 0, "ETH7": 0, "ETH8": 0, "ETH9": 1, "ETH10": 0, "ETH11": 0, "ETH12": 0, "ETH13": 0, "ETH14": 0, "ETH15": 0}, "UBB_2": {"ETH0": 0, "ETH1": 0, "ETH2": 0, "ETH3": 0, "ETH4": 0, "ETH5": 0, "ETH6": 0, "ETH7": 0, "ETH8": 0, "ETH9": 0, "ETH10": 0, "ETH11": 0, "ETH12": 0, "ETH13": 0, "ETH14": 0, "ETH15": 0}, "UBB_3": {"ETH0": 0, "ETH1": 0, "ETH2": 0, "ETH3": 0, "ETH4": 0, "ETH5": 0, "ETH6": 0, "ETH7": 0, "ETH8": 0, "ETH9": 1, "ETH10": 0, "ETH11": 0, "ETH12": 0, "ETH13": 0, "ETH14": 0, "ETH15": 0}, "UBB_4": {"ETH0": 0, "ETH1": 0, "ETH2": 0, "ETH3": 0, "ETH4": 0, "ETH5": 0, "ETH6": 0, "ETH7": 0, "ETH8": 0, "ETH9": 0, "ETH10": 0, "ETH11": 0, "ETH12": 0, "ETH13": 0, "ETH14": 0, "ETH15": 0}}}, "UBB_CTRL": {"QUAN-519": {"UBB_1": {"CtrlA": 0, "CtrlB": 0, "CtrlC": 0, "CtrlD": 1, "CtrlE": 1, "CtrlF": 1, "CtrlG": 1, "CtrlH": 11}, "UBB_2": {"CtrlA": 0, "CtrlB": 0, "CtrlC": 0, "CtrlD": 0, "CtrlE": 0, "CtrlF": 10, "CtrlG": 0, "CtrlH": 0}, "UBB_3": {"CtrlA": 0, "CtrlB": 1, "CtrlC": 3, "CtrlD": 2, "CtrlE": 6, "CtrlF": 6, "CtrlG": 6, "CtrlH": 1}, "UBB_4": {"CtrlA": 0, "CtrlB": 5, "CtrlC": 2, "CtrlD": 1, "CtrlE": 1, "CtrlF": 1, "CtrlG": 3, "CtrlH": 3}}}, "ASIC_ETH": {"QUAN-371": {"ASIC_1": {"ETH0": 0, "ETH1": 9, "ETH2": 14, "ETH3": 29, "ETH4": 19, "ETH5": 0, "ETH6": 9, "ETH7": 16, "ETH8": 0, "ETH9": 18, "ETH10": 10, "ETH11": 2, "ETH12": 0, "ETH13": 0, "ETH14": 0, "ETH15": 0}, "ASIC_2": {"ETH0": 0, "ETH1": 17, "ETH2": 19, "ETH3": 9, "ETH4": 15, "ETH5": 0, "ETH6": 15, "ETH7": 12, "ETH8": 0, "ETH9": 15, "ETH10": 28, "ETH11": 12, "ETH12": 0, "ETH13": 0, "ETH14": 0, "ETH15": 0}, "ASIC_3": {"ETH0": 0, "ETH1": 5, "ETH2": 15, "ETH3": 15, "ETH4": 19, "ETH5": 0, "ETH6": 22, "ETH7": 18, "ETH8": 0, "ETH9": 23, "ETH10": 14, "ETH11": 10, "ETH12": 0, "ETH13": 0, "ETH14": 0, "ETH15": 0}, "ASIC_4": {"ETH0": 0, "ETH1": 5, "ETH2": 19, "ETH3": 22, "ETH4": 1, "ETH5": 1, "ETH6": 0, "ETH7": 18, "ETH8": 0, "ETH9": 28, "ETH10": 7, "ETH11": 8, "ETH12": 0, "ETH13": 0, "ETH14": 0, "ETH15": 0}, "ASIC_5": {"ETH0": 0, "ETH1": 18, "ETH2": 1, "ETH3": 3, "ETH4": 10, "ETH5": 0, "ETH6": 18, "ETH7": 18, "ETH8": 1, "ETH9": 23, "ETH10": 5, "ETH11": 1, "ETH12": 0, "ETH13": 0, "ETH14": 0, "ETH15": 0}, "ASIC_6": {"ETH0": 0, "ETH1": 15, "ETH2": 10, "ETH3": 18, "ETH4": 10, "ETH5": 0, "ETH6": 18, "ETH7": 20, "ETH8": 0, "ETH9": 16, "ETH10": 5, "ETH11": 1, "ETH12": 0, "ETH13": 0, "ETH14": 0, "ETH15": 0}, "ASIC_7": {"ETH0": 0, "ETH1": 23, "ETH2": 10, "ETH3": 18, "ETH4": 20, "ETH5": 0, "ETH6": 28, "ETH7": 6, "ETH8": 0, "ETH9": 22, "ETH10": 0, "ETH11": 2, "ETH12": 0, "ETH13": 0, "ETH14": 0, "ETH15": 0}, "ASIC_8": {"ETH0": 0, "ETH1": 22, "ETH2": 14, "ETH3": 22, "ETH4": 10, "ETH5": 0, "ETH6": 8, "ETH7": 38, "ETH8": 0, "ETH9": 22, "ETH10": 3, "ETH11": 4, "ETH12": 0, "ETH13": 0, "ETH14": 0, "ETH15": 0}}, "QUAN-488": {"ASIC_1": {"ETH0": 0, "ETH1": 0, "ETH2": 0, "ETH3": 0, "ETH4": 0, "ETH5": 0, "ETH6": 0, "ETH7": 0, "ETH8": 0, "ETH9": 0, "ETH10": 0, "ETH11": 0, "ETH12": 0, "ETH13": 0, "ETH14": 0, "ETH15": 0}, "ASIC_2": {"ETH0": 0, "ETH1": 0, "ETH2": 0, "ETH3": 0, "ETH4": 0, "ETH5": 0, "ETH6": 0, "ETH7": 5, "ETH8": 0, "ETH9": 5, "ETH10": 0, "ETH11": 0, "ETH12": 0, "ETH13": 0, "ETH14": 0, "ETH15": 0}, "ASIC_3": {"ETH0": 0, "ETH1": 0, "ETH2": 0, "ETH3": 0, "ETH4": 0, "ETH5": 0, "ETH6": 0, "ETH7": 0, "ETH8": 0, "ETH9": 0, "ETH10": 0, "ETH11": 0, "ETH12": 0, "ETH13": 0, "ETH14": 0, "ETH15": 0}, "ASIC_4": {"ETH0": 0, "ETH1": 0, "ETH2": 0, "ETH3": 0, "ETH4": 0, "ETH5": 0, "ETH6": 20, "ETH7": 10, "ETH8": 0, "ETH9": 10, "ETH10": 0, "ETH11": 0, "ETH12": 0, "ETH13": 0, "ETH14": 0, "ETH15": 0}, "ASIC_5": {"ETH0": 0, "ETH1": 0, "ETH2": 5, "ETH3": 5, "ETH4": 5, "ETH5": 0, "ETH6": 5, "ETH7": 0, "ETH8": 0, "ETH9": 0, "ETH10": 0, "ETH11": 0, "ETH12": 0, "ETH13": 0, "ETH14": 0, "ETH15": 0}, "ASIC_6": {"ETH0": 0, "ETH1": 0, "ETH2": 0, "ETH3": 0, "ETH4": 0, "ETH5": 0, "ETH6": 0, "ETH7": 5, "ETH8": 0, "ETH9": 5, "ETH10": 0, "ETH11": 0, "ETH12": 0, "ETH13": 0, "ETH14": 0, "ETH15": 0}, "ASIC_7": {"ETH0": 0, "ETH1": 0, "ETH2": 5, "ETH3": 5, "ETH4": 10, "ETH5": 0, "ETH6": 10, "ETH7": 8, "ETH8": 0, "ETH9": 0, "ETH10": 5, "ETH11": 0, "ETH12": 0, "ETH13": 0, "ETH14": 0, "ETH15": 0}, "ASIC_8": {"ETH0": 0, "ETH1": 0, "ETH2": 0, "ETH3": 0, "ETH4": 10, "ETH5": 0, "ETH6": 10, "ETH7": 10, "ETH8": 0, "ETH9": 10, "ETH10": 5, "ETH11": 0, "ETH12": 0, "ETH13": 0, "ETH14": 0, "ETH15": 0}}, "QUAN-518": {"ASIC_1": {"ETH0": 0, "ETH1": 0, "ETH2": 0, "ETH3": 0, "ETH4": 0, "ETH5": 0, "ETH6": 0, "ETH7": 0, "ETH8": 0, "ETH9": 0, "ETH10": 0, "ETH11": 0, "ETH12": 0, "ETH13": 0, "ETH14": 0, "ETH15": 0}, "ASIC_2": {"ETH0": 0, "ETH1": 0, "ETH2": 0, "ETH3": 0, "ETH4": 0, "ETH5": 0, "ETH6": 0, "ETH7": 0, "ETH8": 0, "ETH9": 0, "ETH10": 0, "ETH11": 0, "ETH12": 0, "ETH13": 0, "ETH14": 0, "ETH15": 0}, "ASIC_3": {"ETH0": 0, "ETH1": 0, "ETH2": 0, "ETH3": 0, "ETH4": 0, "ETH5": 0, "ETH6": 0, "ETH7": 0, "ETH8": 0, "ETH9": 0, "ETH10": 0, "ETH11": 0, "ETH12": 0, "ETH13": 0, "ETH14": 0, "ETH15": 0}, "ASIC_4": {"ETH0": 0, "ETH1": 0, "ETH2": 0, "ETH3": 0, "ETH4": 0, "ETH5": 0, "ETH6": 0, "ETH7": 0, "ETH8": 0, "ETH9": 0, "ETH10": 0, "ETH11": 0, "ETH12": 0, "ETH13": 0, "ETH14": 0, "ETH15": 0}, "ASIC_5": {"ETH0": 0, "ETH1": 0, "ETH2": 0, "ETH3": 0, "ETH4": 0, "ETH5": 0, "ETH6": 0, "ETH7": 0, "ETH8": 0, "ETH9": 0, "ETH10": 0, "ETH11": 0, "ETH12": 0, "ETH13": 0, "ETH14": 0, "ETH15": 0}, "ASIC_6": {"ETH0": 0, "ETH1": 0, "ETH2": 0, "ETH3": 0, "ETH4": 0, "ETH5": 0, "ETH6": 0, "ETH7": 0, "ETH8": 0, "ETH9": 2, "ETH10": 0, "ETH11": 0, "ETH12": 0, "ETH13": 0, "ETH14": 0, "ETH15": 0}, "ASIC_7": {"ETH0": 0, "ETH1": 0, "ETH2": 0, "ETH3": 0, "ETH4": 0, "ETH5": 0, "ETH6": 0, "ETH7": 0, "ETH8": 0, "ETH9": 0, "ETH10": 0, "ETH11": 0, "ETH12": 0, "ETH13": 0, "ETH14": 0, "ETH15": 0}, "ASIC_8": {"ETH0": 0, "ETH1": 0, "ETH2": 0, "ETH3": 0, "ETH4": 0, "ETH5": 0, "ETH6": 0, "ETH7": 0, "ETH8": 0, "ETH9": 0, "ETH10": 0, "ETH11": 0, "ETH12": 0, "ETH13": 0, "ETH14": 0, "ETH15": 0}}}, "ASIC_CTRL": {"QUAN-519": {"ASIC_1": {"CtrlA": 0, "CtrlB": 0, "CtrlC": 0, "CtrlD": 0, "CtrlE": 0, "CtrlF": 0, "CtrlG": 0, "CtrlH": 0}, "ASIC_2": {"CtrlA": 0, "CtrlB": 0, "CtrlC": 0, "CtrlD": 0, "CtrlE": 0, "CtrlF": 0, "CtrlG": 1, "CtrlH": 1}, "ASIC_3": {"CtrlA": 0, "CtrlB": 0, "CtrlC": 2, "CtrlD": 0, "CtrlE": 0, "CtrlF": 0, "CtrlG": 0, "CtrlH": 0}, "ASIC_4": {"CtrlA": 0, "CtrlB": 5, "CtrlC": 0, "CtrlD": 0, "CtrlE": 0, "CtrlF": 0, "CtrlG": 0, "CtrlH": 5}, "ASIC_5": {"CtrlA": 0, "CtrlB": 0, "CtrlC": 0, "CtrlD": 0, "CtrlE": 5, "CtrlF": 5, "CtrlG": 6, "CtrlH": 1}, "ASIC_6": {"CtrlA": 0, "CtrlB": 0, "CtrlC": 2, "CtrlD": 2, "CtrlE": 1, "CtrlF": 6, "CtrlG": 1, "CtrlH": 6}, "ASIC_7": {"CtrlA": 0, "CtrlB": 0, "CtrlC": 0, "CtrlD": 0, "CtrlE": 0, "CtrlF": 5, "CtrlG": 0, "CtrlH": 0}, "ASIC_8": {"CtrlA": 0, "CtrlB": 1, "CtrlC": 1, "CtrlD": 2, "CtrlE": 2, "CtrlF": 2, "CtrlG": 2, "CtrlH": 2}}}};
+
+        // Populate overall statistics
+        document.getElementById('statTotalUnits').textContent = overallStats.totalUnits;
+        document.getElementById('statPassed').textContent = overallStats.passed;
+        document.getElementById('statFixed').textContent = overallStats.fixed;
+        document.getElementById('statFailed').textContent = overallStats.failed;
+        document.getElementById('statFPY').textContent = `${overallStats.overallFPY}%`;
+        document.getElementById('statAPY').textContent = `${overallStats.overallAPY}%`;
+
+        // Enhanced APY & FPY Chart
+        new Chart(document.getElementById('yieldChart').getContext('2d'), {
+            type: 'line',
+            data: { 
+                labels: yieldData.map(d => d.buildDate), 
+                datasets: [
+                    { 
+                        label: 'APY (%)', 
+                        data: yieldData.map(d => d.apy), 
+                        borderColor: '#4fc3f7', 
+                        backgroundColor: 'rgba(79, 195, 247, 0.2)', 
+                        tension: 0.3, 
+                        fill: true,
+                        pointRadius: 5,
+                        pointHoverRadius: 7
+                    },
+                    { 
+                        label: 'FPY (%)', 
+                        data: yieldData.map(d => d.fpy), 
+                        borderColor: '#ff9800', 
+                        backgroundColor: 'rgba(255, 152, 0, 0.2)', 
+                        tension: 0.3, 
+                        fill: true,
+                        pointRadius: 5,
+                        pointHoverRadius: 7
+                    }
+                ]
+            },
+            options: { 
+                responsive: true, 
+                maintainAspectRatio: false, 
+                plugins: { 
+                    legend: { labels: { color: '#e8e8e8', font: { size: 12 } } }, 
+                    title: { display: true, text: 'Yield Trends', color: '#4fc3f7', font: { size: 14, weight: 'bold' } },
+                    tooltip: {
+                        callbacks: {
+                            title: function(context) {
+                                const buildDate = context[0].label;
+                                const buildData = yieldData.find(d => d.buildDate === buildDate);
+                                return `Build: ${buildDate} (${buildData.totalUnits} units)`;
+                            },
+                            label: function(context) {
+                                const buildData = yieldData[context.dataIndex];
+                                if (context.dataset.label === 'APY (%)') {
+                                    return `APY: ${context.parsed.y}% (Passed: ${buildData.passed}, Fixed: ${buildData.fixed})`;
+                                } else {
+                                    return `FPY: ${context.parsed.y}% (Passed: ${buildData.passed} / ${buildData.totalUnits})`;
+                                }
+                            }
+                        },
+                        backgroundColor: 'rgba(30, 42, 58, 0.95)',
+                        titleColor: '#4fc3f7',
+                        bodyColor: '#e8e8e8',
+                        borderColor: '#4fc3f7',
+                        borderWidth: 1,
+                        padding: 12,
+                        displayColors: true
+                    },
+                    datalabels: {
+                        display: true,
+                        color: '#e8e8e8',
+                        font: { size: 10, weight: 'bold' },
+                        formatter: function(value) {
+                            return value + '%';
+                        },
+                        align: 'top',
+                        offset: 4
+                    }
+                }, 
+                scales: { 
+                    y: { 
+                        beginAtZero: true, 
+                        max: 100, 
+                        ticks: { 
+                            color: '#b0c4de', 
+                            font: { size: 11 },
+                            callback: function(value) {
+                                return value + '%';
+                            }
+                        }, 
+                        grid: { color: 'rgba(176, 196, 222, 0.1)' } 
+                    }, 
+                    x: { 
+                        ticks: { color: '#b0c4de', font: { size: 11 } }, 
+                        grid: { color: 'rgba(176, 196, 222, 0.1)' } 
+                    }
+                }
+            }
+        });
+
+        let jiraTrendChart = null;
+        const jiraTrendSelect = document.getElementById('jiraTrendSelect');
+        const uniqueJiras = [...new Set(jiraTrendData.map(d => d.jira))];
+        uniqueJiras.forEach(jira => {
+            const option = document.createElement('option');
+            option.value = jira;
+            const summary = jiraMapping[jira] || '';
+            option.textContent = summary ? `${jira} - ${summary}` : jira;
+            jiraTrendSelect.appendChild(option);
+        });
+        if (uniqueJiras.length > 0) {
+            const shuffled = uniqueJiras.sort(() => 0.5 - Math.random());
+            const defaultSelection = shuffled.slice(0, Math.min(3, uniqueJiras.length));
+            Array.from(jiraTrendSelect.options).forEach(option => {
+                if (defaultSelection.includes(option.value)) {
+                    option.selected = true;
+                }
+            });
+        }
+        function updateJiraTrendChart() {
+            const selectedJiras = Array.from(jiraTrendSelect.selectedOptions).map(opt => opt.value);
+            if (selectedJiras.length === 0) {
+                if (jiraTrendChart) { jiraTrendChart.destroy(); jiraTrendChart = null; }
+                return;
+            }
+            const dates = [...new Set(jiraTrendData.map(d => d.buildDate))].sort();
+            const datasets = selectedJiras.map((jira, idx) => {
+                const color = `hsl(${idx * (360 / selectedJiras.length)}, 70%, 60%)`;
+                return { label: jira, data: dates.map(date => { const item = jiraTrendData.find(d => d.jira === jira && d.buildDate === date); return item ? item.count : 0; }), borderColor: color, backgroundColor: color + '33', tension: 0.3 };
+            });
+            if (jiraTrendChart) { jiraTrendChart.destroy(); }
+            jiraTrendChart = new Chart(document.getElementById('jiraTrendChart').getContext('2d'), {
+                type: 'line', data: { labels: dates, datasets: datasets }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: '#e8e8e8', font: { size: 11 } } }, title: { display: true, text: 'Jira Trends', color: '#4fc3f7', font: { size: 14, weight: 'bold' } }}, scales: { y: { beginAtZero: true, title: { display: true, text: 'APY Units', color: '#4fc3f7', font: { size: 12, weight: 'bold' } }, ticks: { color: '#b0c4de', stepSize: 1, font: { size: 11 } }, grid: { color: 'rgba(176, 196, 222, 0.1)' } }, x: { ticks: { color: '#b0c4de', font: { size: 11 } }, grid: { color: 'rgba(176, 196, 222, 0.1)' } }}}
+            });
+        }
+        jiraTrendSelect.addEventListener('change', updateJiraTrendChart);
+        updateJiraTrendChart();
+
+        const heatmapTypeSelect = document.getElementById('heatmapTypeSelect');
+        const heatmapJiraSelect = document.getElementById('heatmapJiraSelect');
+        const heatmapDisplay = document.getElementById('heatmapDisplay');
+        const allJiras = new Set();
+        Object.values(allHeatmaps).forEach(heatmapType => {
+            Object.keys(heatmapType).forEach(jira => allJiras.add(jira));
+        });
+        [...allJiras].sort().forEach(jira => {
+            const option = document.createElement('option');
+            option.value = jira;
+            const summary = jiraMapping[jira] || '';
+            option.textContent = summary ? `${jira} - ${summary}` : jira;
+            heatmapJiraSelect.appendChild(option);
+        });
+        function updateHeatmapTypeOptions() {
+            const selectedJira = heatmapJiraSelect.value;
+            if (!selectedJira) {
+                heatmapTypeSelect.innerHTML = '<option value="">Select Jira first</option>';
+                heatmapDisplay.innerHTML = '<div class="no-data">Select a Jira code</div>';
+                return;
+            }
+            const availableTypes = [];
+            const typeLabels = {
+                'UBB_ASIC': 'UBB vs ASIC',
+                'UBB_ETH': 'UBB vs ETH',
+                'UBB_CTRL': 'UBB vs Ctrl',
+                'ASIC_ETH': 'ASIC vs ETH',
+                'ASIC_CTRL': 'ASIC vs Ctrl'
+            };
+            Object.keys(allHeatmaps).forEach(heatmapType => {
+                if (allHeatmaps[heatmapType][selectedJira]) {
+                    availableTypes.push(heatmapType);
+                }
+            });
+            heatmapTypeSelect.innerHTML = '';
+            if (availableTypes.length === 0) {
+                heatmapTypeSelect.innerHTML = '<option value="">No heatmaps available</option>';
+                heatmapDisplay.innerHTML = '<div class="no-data">No heatmap data for this Jira</div>';
+            } else {
+                availableTypes.forEach(type => {
+                    const option = document.createElement('option');
+                    option.value = type;
+                    option.textContent = typeLabels[type];
+                    heatmapTypeSelect.appendChild(option);
+                });
+                displayHeatmap();
+            }
+        }
+        function getColorForValue(value, max) {
+            if (value === 0) return '#2c3e50';
+            const intensity = Math.min(value / max, 1);
+            return `rgb(${Math.floor(255 * intensity)}, ${Math.floor(100 * (1 - intensity))}, 50)`;
+        }
+        function displayHeatmap() {
+            const selectedType = heatmapTypeSelect.value;
+            const selectedJira = heatmapJiraSelect.value;
+            if (!selectedJira || !selectedType || !allHeatmaps[selectedType] || !allHeatmaps[selectedType][selectedJira]) {
+                heatmapDisplay.innerHTML = '<div class="no-data">Select Jira and heatmap type</div>';
+                return;
+            }
+            const heatmapData = allHeatmaps[selectedType][selectedJira];
+            const rows = Object.keys(heatmapData);
+            const cols = Object.keys(heatmapData[rows[0]]);
+            let maxValue = 0;
+            rows.forEach(row => { cols.forEach(col => { maxValue = Math.max(maxValue, heatmapData[row][col]); }); });
+            let html = '<table class="heatmap-table"><thead><tr><th>' + selectedType.replace('_', ' vs ') + '</th>';
+            cols.forEach(col => { html += '<th>' + col + '</th>'; });
+            html += '</tr></thead><tbody>';
+            rows.forEach(row => {
+                html += '<tr><th>' + row + '</th>';
+                cols.forEach(col => {
+                    const value = heatmapData[row][col];
+                    const color = getColorForValue(value, maxValue);
+                    const textColor = value > maxValue * 0.5 ? '#ffffff' : '#e8e8e8';
+                    html += `<td class="heatmap-cell" style="background-color: ${color}; color: ${textColor};" title="${row} - ${col}: ${value}">${value}</td>`;
+                });
+                html += '</tr>';
+            });
+            html += '</tbody></table>';
+            html += `<p style="margin-top: 10px; color: #b0c4de; text-align: center; font-size: 0.95em;"><strong>${selectedJira}: ${selectedType.replace('_', ' vs ')}</strong> | Max: ${maxValue}</p>`;
+            heatmapDisplay.innerHTML = html;
+        }
+        heatmapJiraSelect.addEventListener('change', updateHeatmapTypeOptions);
+        heatmapTypeSelect.addEventListener('change', displayHeatmap);
+        updateHeatmapTypeOptions();
+
+        // Updated Jira Summary Table with FPY % and APY %
+        const summaryTable = document.getElementById('summaryTable');
+        let summaryHTML = '<thead><tr><th>Jira</th><th>FPY Units</th><th>Recovered</th><th>APY Units</th><th>FPY %</th><th>APY %</th></tr></thead><tbody>';
+        jiraSummaryData.forEach(item => {
+            const summary = jiraMapping[item.jira] || '';
+            const tooltipText = summary ? `${item.jira}: ${summary}` : item.jira;
+            const escapedTooltip = tooltipText.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+            summaryHTML += `<tr><td><strong title="${escapedTooltip}" style="cursor: help;">${item.jira}</strong></td><td>${item.fpyUnits}</td><td>${item.recovered}</td><td>${item.apyUnits}</td><td>${item.fpyRate}%</td><td>${item.apyRate}%</td></tr>`;
+        });
+        summaryHTML += '</tbody>';
+        summaryTable.innerHTML = summaryHTML;
+    </script>
+</body>
+</html>
