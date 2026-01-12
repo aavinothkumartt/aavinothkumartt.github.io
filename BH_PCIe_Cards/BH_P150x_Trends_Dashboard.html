@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>PCIe Yield Analytics</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=JetBrains+Mono&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-dark: #0f1115; --bg-card: #181b21; --text-main: #e0e6ed; --text-muted: #94a3b8;
+            --accent-primary: #0ea5e9; --accent-secondary: #8b5cf6; --accent-success: #10b981;
+            --accent-danger: #ef4444; --border-color: #2d3748; --font-main: 'Inter', sans-serif;
+        }
+        body { background-color: var(--bg-dark); color: var(--text-main); font-family: var(--font-main); margin: 0; padding: 20px; box-sizing: border-box; }
+        * { box-sizing: border-box; }
+        .dashboard { max-width: 1800px; margin: 0 auto; }
+        
+        /* Header */
+        header { border-bottom: 1px solid var(--border-color); padding-bottom: 15px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 10px; }
+        h1 { margin: 0; background: linear-gradient(90deg, var(--accent-primary), var(--accent-secondary)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-size: 2rem; line-height: 1.2; }
+        .subtitle { color: var(--text-muted); margin-top: 5px; font-size: 0.9rem; }
+        
+        /* Filter Bar */
+        .filter-bar { background: var(--bg-card); padding: 15px; border-radius: 8px; border: 1px solid var(--accent-primary); margin-bottom: 20px; display: flex; gap: 15px; align-items: center; flex-wrap: wrap; }
+        select, button { background: var(--bg-dark); color: var(--text-main); border: 1px solid var(--border-color); padding: 8px 12px; border-radius: 6px; cursor: pointer; font-size: 0.9rem; transition: background 0.2s; }
+        button:hover, select:hover { background: rgba(255,255,255,0.05); }
+        button.active { background: var(--accent-primary); color: white; border-color: var(--accent-primary); }
+        
+        /* Grid Layout */
+        .grid { display: grid; grid-template-columns: repeat(12, 1fr); gap: 20px; }
+        .col-12 { grid-column: span 12; } .col-8 { grid-column: span 8; } .col-6 { grid-column: span 6; } .col-4 { grid-column: span 4; }
+        
+        .card { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 12px; padding: 20px; position: relative; display: flex; flex-direction: column; }
+        .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 10px; }
+        h2 { font-size: 1.1rem; margin: 0; display: flex; align-items: center; gap: 8px; white-space: nowrap; }
+        h2::before { content: ''; width: 4px; height: 16px; background: var(--accent-primary); border-radius: 2px; display: block; }
+        
+        /* Stats */
+        .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 15px; width: 100%; }
+        .stat-box { background: rgba(255,255,255,0.03); padding: 15px; border-radius: 8px; text-align: center; }
+        .stat-val { font-size: 1.8rem; font-weight: 700; font-family: 'JetBrains Mono'; margin-bottom: 5px; }
+        .stat-lbl { font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase; }
+        
+        /* Dropdown Custom */
+        .dropdown-container { position: relative; display: inline-block; }
+        .dropdown-content { display: none; position: absolute; top: 100%; right: 0; background: var(--bg-card); border: 1px solid var(--border-color); z-index: 1000; min-width: 200px; max-height: 300px; overflow-y: auto; padding: 5px; box-shadow: 0 10px 25px rgba(0,0,0,0.8); border-radius: 6px; }
+        .dropdown-content.show { display: block; }
+        .dropdown-item { padding: 10px; cursor: pointer; display: flex; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.05); }
+        .dropdown-item:last-child { border-bottom: none; }
+        .dropdown-item:hover { background: rgba(255,255,255,0.05); }
+        .dropdown-item input { margin-right: 10px; transform: scale(1.2); }
+        
+        /* Heatmap & Tables */
+        .heatmap-cell { font-weight: bold; color: white; display: flex; align-items: center; justify-content: center; border-radius: 4px; height: 100%; transition: transform 0.1s; min-width: 30px; }
+        .heatmap-cell:hover { transform: scale(1.1); z-index: 10; border: 1px solid white; }
+        
+        table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+        th { text-align: left; padding: 12px; color: var(--accent-primary); border-bottom: 1px solid var(--border-color); background: rgba(255,255,255,0.02); white-space: nowrap; }
+        td { padding: 10px; border-bottom: 1px solid var(--border-color); }
+        a { color: var(--accent-secondary); text-decoration: none; }
+        a:hover { text-decoration: underline; }
+        
+        .chart-box { position: relative; height: 300px; width: 100%; }
+        .scroll-box { overflow-y: auto; max-height: 400px; -webkit-overflow-scrolling: touch; }
+        .toggle-group { display: flex; gap: 5px; }
+        .divider { width:1px; background:#444; margin: 0 10px; }
+
+        /* Mobile Responsive */
+        @media (max-width: 1024px) {
+            .col-4, .col-8 { grid-column: span 6; }
+        }
+        @media (max-width: 768px) {
+            body { padding: 10px; }
+            h1 { font-size: 1.5rem; }
+            .grid { display: flex; flex-direction: column; gap: 15px; }
+            .col-12, .col-8, .col-6, .col-4 { width: 100%; }
+            .filter-bar { flex-direction: column; align-items: stretch; gap: 10px; }
+            .filter-bar select { width: 100% !important; height: 44px; }
+            .card-header { flex-direction: column; align-items: flex-start; gap: 10px; }
+            .card-header > div { width: 100%; display: flex; justify-content: space-between; }
+            button, select { height: 40px; font-size: 14px; }
+            .dropdown-btn { width: 100%; text-align: left; }
+            .dropdown-content { width: 100%; position: relative; box-shadow: none; border-top: none; }
+            .chart-box { height: 250px; }
+            .stat-grid { grid-template-columns: repeat(2, 1fr); }
+            .stat-val { font-size: 1.4rem; }
+            .heatmap-subcontainer { overflow-x: auto; }
+            .scroll-box table { min-width: 600px; }
+            .card .dropdown-container { width: 100% !important; }
+            .card select { width: 100% !important; }
+            .card-header .toggle-group { width: auto; }
+            .card-header > div { flex-wrap: wrap; }
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard">
+        <header>
+            <div>
+                <h1>PCIe Yield Analytics</h1>
+                <div class="subtitle">P150 Series Production Dashboard</div>
+            </div>
+            <div style="text-align: right; font-size: 0.8rem; color: var(--text-muted); margin-top:5px;">
+                2026-01-12 09:06<br>BH_P150x_Trends.xlsx
+            </div>
+        </header>
+
+        <div class="filter-bar">
+            <strong>🔎 Global Model Filter:</strong>
+            <select id="globalModel" onchange="renderDashboard()" style="width: 300px;">
+                <option value="All">All Models Combined</option>
+                <option value="P100a">P100a</option><option value="P150a">P150a</option><option value="P150b">P150b</option><option value="P150c">P150c</option>
+            </select>
+        </div>
+
+        <div class="grid">
+            <div class="card col-12">
+                <div class="card-header"><h2>Production Overview</h2></div>
+                <div class="stat-grid" id="statsContainer"></div>
+            </div>
+
+            <div class="card col-8">
+                <div class="card-header"><h2>Yield Trends</h2></div>
+                <div class="chart-box"><canvas id="yieldChart"></canvas></div>
+            </div>
+
+            <div class="card col-4">
+                <div class="card-header"><h2>Model Distribution</h2></div>
+                <div class="scroll-box">
+                    <table id="modelTable"><thead><tr><th>Model</th><th style="text-align:right">Count</th></tr></thead><tbody></tbody></table>
+                </div>
+            </div>
+
+            <div class="card col-6">
+                <div class="card-header">
+                    <h2>Jira Trend Analysis</h2>
+                    <div style="display:flex; align-items:center;">
+                        <div class="toggle-group">
+                            <button id="btnAPY" class="active" onclick="setTrendMode('APY')">APY</button>
+                            <button id="btnFPY" onclick="setTrendMode('FPY')">FPY</button>
+                        </div>
+                        <div class="divider" style="display:none;">&nbsp;</div>
+                        <div class="toggle-group" style="margin-left:10px;">
+                            <button id="btnCount" class="active" onclick="setTrendUnit('count')">#</button>
+                            <button id="btnPercent" onclick="setTrendUnit('percent')">%</button>
+                        </div>
+                    </div>
+                </div>
+                <select id="jiraSelect" multiple style="width:100%; height:100px; margin-bottom:10px; background:rgba(0,0,0,0.2)"></select>
+                <div style="font-size:0.75rem; color:var(--text-muted); margin-bottom:5px;">Ctrl/Cmd + Click to select multiple</div>
+                <div class="chart-box" style="height: 250px;"><canvas id="jiraChart"></canvas></div>
+            </div>
+
+            <div class="card col-6">
+                <div class="card-header">
+                    <h2>Failure Distribution Heatmap</h2>
+                </div>
+                <div style="display:flex; flex-direction:column; gap:10px; margin-bottom:15px;">
+                    <div style="display:flex; gap:10px; flex-wrap:wrap;">
+                        <div style="flex:2; min-width:200px;">
+                            <label style="font-size:0.8rem; color:var(--text-muted);">Select Jira Issue</label>
+                            <select id="hmJiraSelect" style="width:100%"></select>
+                        </div>
+                        <div class="dropdown-container" style="flex:1; min-width:150px;">
+                            <label style="font-size:0.8rem; color:var(--text-muted);">Build Filter</label>
+                            <button class="dropdown-btn" id="hmDateBtn" onclick="toggleDropdown('hmDateContent')">Select Builds (All)</button>
+                            <div id="hmDateContent" class="dropdown-content"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="scroll-box">
+                    <div style="margin-bottom:20px">
+                        <div style="margin-bottom:5px; color:var(--text-muted); font-size:0.8rem">Ethernet Port Distribution</div>
+                        <div id="hm-ETHPORT" style="overflow-x:auto"></div>
+                    </div>
+                    <div style="margin-bottom:20px">
+                        <div style="margin-bottom:5px; color:var(--text-muted); font-size:0.8rem">Controller Distribution</div>
+                        <div id="hm-CONTROLLER" style="overflow-x:auto"></div>
+                    </div>
+                    <div>
+                        <div style="margin-bottom:5px; color:var(--text-muted); font-size:0.8rem">Model Distribution</div>
+                        <div id="hm-MODEL" style="overflow-x:auto"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card col-12">
+                <div class="card-header">
+                    <h2>Detailed Jira Summary</h2>
+                    <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+                        <div class="toggle-group">
+                            <button id="sortAPY" class="active" onclick="updateSummary('APY')">Sort APY</button>
+                            <button id="sortFPY" onclick="updateSummary('FPY')">Sort FPY</button>
+                        </div>
+                        <div class="dropdown-container" style="width:200px">
+                            <button class="dropdown-btn" id="summDateBtn" onclick="toggleDropdown('summDateContent')">Select Builds (All)</button>
+                            <div id="summDateContent" class="dropdown-content"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="scroll-box">
+                    <table id="summaryTable">
+                        <thead><tr><th>Jira</th><th>Summary</th><th style="text-align:center">FPY Hits</th><th style="text-align:center">APY Hits</th><th style="text-align:center">APY %</th><th style="text-align:center">FPY %</th></tr></thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const DATA = {"All": {"yield_data": [{"buildDate": "2025-08-18", "totalUnits": 1300, "fpy": 96.85, "apy": 99.46}, {"buildDate": "2025-09-25", "totalUnits": 1050, "fpy": 92.95, "apy": 98.48}, {"buildDate": "2025-10-13", "totalUnits": 1882, "fpy": 90.91, "apy": 98.09}, {"buildDate": "2025-11-04", "totalUnits": 56, "fpy": 91.07, "apy": 96.43}], "overall_stats": {"totalUnits": 4288, "passed": 3997, "fixed": 230, "failed": 61, "overallFPY": 93.21, "overallAPY": 98.58, "modelBreakdown": {"P150b": 3056, "P150a": 981, "P150c": 200, "P100a": 51}}, "trends": {"APY": [{"buildDate": "2025-08-18", "jira": "NTF-E103", "count": 0}, {"buildDate": "2025-08-18", "jira": "NTF-EFRDY", "count": 0}, {"buildDate": "2025-08-18", "jira": "NTF-EL", "count": 0}, {"buildDate": "2025-08-18", "jira": "QUAN-146", "count": 0}, {"buildDate": "2025-08-18", "jira": "QUAN-473", "count": 2}, {"buildDate": "2025-08-18", "jira": "QUAN-546", "count": 1}, {"buildDate": "2025-08-18", "jira": "QUAN-570", "count": 0}, {"buildDate": "2025-08-18", "jira": "QUAN-755", "count": 0}, {"buildDate": "2025-08-18", "jira": "QUAN-757", "count": 0}, {"buildDate": "2025-08-18", "jira": "Real Fail - EFRDY", "count": 4}, {"buildDate": "2025-08-18", "jira": "Real Fail - EL", "count": 0}, {"buildDate": "2025-09-25", "jira": "NTF-E103", "count": 0}, {"buildDate": "2025-09-25", "jira": "NTF-EFRDY", "count": 1}, {"buildDate": "2025-09-25", "jira": "NTF-EL", "count": 0}, {"buildDate": "2025-09-25", "jira": "QUAN-146", "count": 0}, {"buildDate": "2025-09-25", "jira": "QUAN-473", "count": 7}, {"buildDate": "2025-09-25", "jira": "QUAN-546", "count": 4}, {"buildDate": "2025-09-25", "jira": "QUAN-570", "count": 2}, {"buildDate": "2025-09-25", "jira": "QUAN-755", "count": 1}, {"buildDate": "2025-09-25", "jira": "QUAN-757", "count": 1}, {"buildDate": "2025-09-25", "jira": "Real Fail - EFRDY", "count": 1}, {"buildDate": "2025-09-25", "jira": "Real Fail - EL", "count": 2}, {"buildDate": "2025-10-13", "jira": "NTF-E103", "count": 0}, {"buildDate": "2025-10-13", "jira": "NTF-EFRDY", "count": 2}, {"buildDate": "2025-10-13", "jira": "NTF-EL", "count": 0}, {"buildDate": "2025-10-13", "jira": "QUAN-146", "count": 0}, {"buildDate": "2025-10-13", "jira": "QUAN-473", "count": 31}, {"buildDate": "2025-10-13", "jira": "QUAN-546", "count": 2}, {"buildDate": "2025-10-13", "jira": "QUAN-570", "count": 2}, {"buildDate": "2025-10-13", "jira": "QUAN-755", "count": 0}, {"buildDate": "2025-10-13", "jira": "QUAN-757", "count": 1}, {"buildDate": "2025-10-13", "jira": "Real Fail - EFRDY", "count": 2}, {"buildDate": "2025-10-13", "jira": "Real Fail - EL", "count": 2}, {"buildDate": "2025-11-04", "jira": "NTF-E103", "count": 0}, {"buildDate": "2025-11-04", "jira": "NTF-EFRDY", "count": 0}, {"buildDate": "2025-11-04", "jira": "NTF-EL", "count": 0}, {"buildDate": "2025-11-04", "jira": "QUAN-146", "count": 0}, {"buildDate": "2025-11-04", "jira": "QUAN-473", "count": 0}, {"buildDate": "2025-11-04", "jira": "QUAN-546", "count": 0}, {"buildDate": "2025-11-04", "jira": "QUAN-570", "count": 0}, {"buildDate": "2025-11-04", "jira": "QUAN-755", "count": 0}, {"buildDate": "2025-11-04", "jira": "QUAN-757", "count": 2}, {"buildDate": "2025-11-04", "jira": "Real Fail - EFRDY", "count": 0}, {"buildDate": "2025-11-04", "jira": "Real Fail - EL", "count": 0}], "FPY": [{"buildDate": "2025-08-18", "jira": "NTF-E103", "count": 0}, {"buildDate": "2025-08-18", "jira": "NTF-EFRDY", "count": 0}, {"buildDate": "2025-08-18", "jira": "NTF-EL", "count": 1}, {"buildDate": "2025-08-18", "jira": "QUAN-146", "count": 7}, {"buildDate": "2025-08-18", "jira": "QUAN-473", "count": 2}, {"buildDate": "2025-08-18", "jira": "QUAN-546", "count": 1}, {"buildDate": "2025-08-18", "jira": "QUAN-570", "count": 0}, {"buildDate": "2025-08-18", "jira": "QUAN-755", "count": 1}, {"buildDate": "2025-08-18", "jira": "QUAN-757", "count": 17}, {"buildDate": "2025-08-18", "jira": "Real Fail - EFRDY", "count": 4}, {"buildDate": "2025-08-18", "jira": "Real Fail - EL", "count": 10}, {"buildDate": "2025-09-25", "jira": "NTF-E103", "count": 2}, {"buildDate": "2025-09-25", "jira": "NTF-EFRDY", "count": 1}, {"buildDate": "2025-09-25", "jira": "NTF-EL", "count": 0}, {"buildDate": "2025-09-25", "jira": "QUAN-146", "count": 5}, {"buildDate": "2025-09-25", "jira": "QUAN-473", "count": 8}, {"buildDate": "2025-09-25", "jira": "QUAN-546", "count": 4}, {"buildDate": "2025-09-25", "jira": "QUAN-570", "count": 3}, {"buildDate": "2025-09-25", "jira": "QUAN-755", "count": 1}, {"buildDate": "2025-09-25", "jira": "QUAN-757", "count": 47}, {"buildDate": "2025-09-25", "jira": "Real Fail - EFRDY", "count": 1}, {"buildDate": "2025-09-25", "jira": "Real Fail - EL", "count": 6}, {"buildDate": "2025-10-13", "jira": "NTF-E103", "count": 6}, {"buildDate": "2025-10-13", "jira": "NTF-EFRDY", "count": 3}, {"buildDate": "2025-10-13", "jira": "NTF-EL", "count": 0}, {"buildDate": "2025-10-13", "jira": "QUAN-146", "count": 2}, {"buildDate": "2025-10-13", "jira": "QUAN-473", "count": 31}, {"buildDate": "2025-10-13", "jira": "QUAN-546", "count": 2}, {"buildDate": "2025-10-13", "jira": "QUAN-570", "count": 2}, {"buildDate": "2025-10-13", "jira": "QUAN-755", "count": 0}, {"buildDate": "2025-10-13", "jira": "QUAN-757", "count": 122}, {"buildDate": "2025-10-13", "jira": "Real Fail - EFRDY", "count": 2}, {"buildDate": "2025-10-13", "jira": "Real Fail - EL", "count": 7}, {"buildDate": "2025-11-04", "jira": "NTF-E103", "count": 1}, {"buildDate": "2025-11-04", "jira": "NTF-EFRDY", "count": 1}, {"buildDate": "2025-11-04", "jira": "NTF-EL", "count": 0}, {"buildDate": "2025-11-04", "jira": "QUAN-146", "count": 0}, {"buildDate": "2025-11-04", "jira": "QUAN-473", "count": 0}, {"buildDate": "2025-11-04", "jira": "QUAN-546", "count": 0}, {"buildDate": "2025-11-04", "jira": "QUAN-570", "count": 0}, {"buildDate": "2025-11-04", "jira": "QUAN-755", "count": 0}, {"buildDate": "2025-11-04", "jira": "QUAN-757", "count": 3}, {"buildDate": "2025-11-04", "jira": "Real Fail - EFRDY", "count": 0}, {"buildDate": "2025-11-04", "jira": "Real Fail - EL", "count": 0}]}, "heatmaps": {"ETH_PORT": {"QUAN-757": {"Port 12": {"2025-09-25": 13, "2025-10-13": 52, "2025-11-04": 7, "2025-08-18": 5}, "Port 4": {"2025-09-25": 26, "2025-10-13": 43, "2025-11-04": 2, "2025-08-18": 3}, "Port 7": {"2025-09-25": 7, "2025-10-13": 6, "2025-11-04": 1, "2025-08-18": 4}, "Port 9": {"2025-09-25": 10, "2025-10-13": 56, "2025-08-18": 6}, "Port 11": {"2025-09-25": 6, "2025-10-13": 26, "2025-08-18": 4}, "Port 6": {"2025-09-25": 3, "2025-10-13": 5, "2025-08-18": 5}, "Port 13": {"2025-09-25": 3, "2025-10-13": 5, "2025-08-18": 7}, "Port 10": {"2025-09-25": 2, "2025-10-13": 13, "2025-11-04": 2, "2025-08-18": 4}}}, "MODEL": {"NTF-EFRDY": {"P150b": {"2025-09-25": 2, "2025-10-13": 16, "2025-11-04": 1}}, "QUAN-473": {"P150b": {"2025-09-25": 23, "2025-10-13": 40, "2025-08-18": 8}, "P150a": {"2025-09-25": 4, "2025-10-13": 22}, "P150c": {"2025-10-13": 11}}, "QUAN-546": {"P150a": {"2025-09-25": 7}, "P150b": {"2025-09-25": 2, "2025-10-13": 1, "2025-08-18": 7}, "P100a": {"2025-10-13": 1}}, "QUAN-757": {"P150b": {"2025-09-25": 65, "2025-10-13": 162, "2025-11-04": 12, "2025-08-18": 21}, "P150a": {"2025-09-25": 4, "2025-10-13": 28, "2025-08-18": 17}, "P150c": {"2025-09-25": 1, "2025-10-13": 16}}, "Real Fail - EL": {"P150b": {"2025-09-25": 3, "2025-10-13": 5, "2025-08-18": 7}, "P150c": {"2025-09-25": 1, "2025-10-13": 5}, "P150a": {"2025-09-25": 3, "2025-08-18": 4}}, "QUAN-146": {"P150b": {"2025-09-25": 5, "2025-10-13": 1, "2025-08-18": 2}, "P150a": {"2025-09-25": 3, "2025-10-13": 2, "2025-08-18": 7}}, "Real Fail - EFRDY": {"P150b": {"2025-09-25": 1, "2025-10-13": 3, "2025-08-18": 2}, "P150a": {"2025-10-13": 1, "2025-08-18": 6}, "P100a": {"2025-08-18": 1}}, "QUAN-570": {"P150b": {"2025-09-25": 6, "2025-10-13": 1}, "P150c": {"2025-09-25": 1}, "P150a": {"2025-10-13": 1}}, "NTF-E103": {"P150a": {"2025-09-25": 2, "2025-10-13": 3, "2025-11-04": 1}, "P100a": {"2025-10-13": 1}, "P150c": {"2025-10-13": 1}, "P150b": {"2025-10-13": 2}}, "QUAN-755": {"P150b": {"2025-09-25": 2}, "P150a": {"2025-08-18": 1}}, "NTF-EL": {"P150a": {"2025-08-18": 1}}}, "CONTROLLER": {"QUAN-473": {"Ctrl 255": {"2025-09-25": 27, "2025-10-13": 73, "2025-08-18": 8}}}}, "top_jira": "QUAN-757"}, "P100a": {"yield_data": [{"buildDate": "2025-08-18", "totalUnits": 1, "fpy": 0.0, "apy": 0.0}, {"buildDate": "2025-10-13", "totalUnits": 50, "fpy": 96.0, "apy": 98.0}], "overall_stats": {"totalUnits": 51, "passed": 48, "fixed": 1, "failed": 2, "overallFPY": 94.12, "overallAPY": 96.08, "modelBreakdown": {"P100a": 51}}, "trends": {"APY": [{"buildDate": "2025-08-18", "jira": "NTF-E103", "count": 0}, {"buildDate": "2025-08-18", "jira": "QUAN-546", "count": 0}, {"buildDate": "2025-08-18", "jira": "Real Fail - EFRDY", "count": 1}, {"buildDate": "2025-10-13", "jira": "NTF-E103", "count": 0}, {"buildDate": "2025-10-13", "jira": "QUAN-546", "count": 1}, {"buildDate": "2025-10-13", "jira": "Real Fail - EFRDY", "count": 0}], "FPY": [{"buildDate": "2025-08-18", "jira": "NTF-E103", "count": 0}, {"buildDate": "2025-08-18", "jira": "QUAN-546", "count": 0}, {"buildDate": "2025-08-18", "jira": "Real Fail - EFRDY", "count": 1}, {"buildDate": "2025-10-13", "jira": "NTF-E103", "count": 1}, {"buildDate": "2025-10-13", "jira": "QUAN-546", "count": 1}, {"buildDate": "2025-10-13", "jira": "Real Fail - EFRDY", "count": 0}]}, "heatmaps": {"ETH_PORT": {}, "MODEL": {"QUAN-546": {"P100a": {"2025-10-13": 1}}, "NTF-E103": {"P100a": {"2025-10-13": 1}}, "Real Fail - EFRDY": {"P100a": {"2025-08-18": 1}}}, "CONTROLLER": {}}, "top_jira": "NTF-E103"}, "P150a": {"yield_data": [{"buildDate": "2025-08-18", "totalUnits": 452, "fpy": 96.46, "apy": 99.56}, {"buildDate": "2025-09-25", "totalUnits": 200, "fpy": 94.0, "apy": 98.0}, {"buildDate": "2025-10-13", "totalUnits": 315, "fpy": 91.43, "apy": 96.83}, {"buildDate": "2025-11-04", "totalUnits": 14, "fpy": 92.86, "apy": 100.0}], "overall_stats": {"totalUnits": 981, "passed": 925, "fixed": 40, "failed": 16, "overallFPY": 94.29, "overallAPY": 98.37, "modelBreakdown": {"P150a": 981}}, "trends": {"APY": [{"buildDate": "2025-08-18", "jira": "NTF-E103", "count": 0}, {"buildDate": "2025-08-18", "jira": "NTF-EL", "count": 0}, {"buildDate": "2025-08-18", "jira": "QUAN-146", "count": 0}, {"buildDate": "2025-08-18", "jira": "QUAN-473", "count": 0}, {"buildDate": "2025-08-18", "jira": "QUAN-546", "count": 0}, {"buildDate": "2025-08-18", "jira": "QUAN-570", "count": 0}, {"buildDate": "2025-08-18", "jira": "QUAN-755", "count": 0}, {"buildDate": "2025-08-18", "jira": "QUAN-757", "count": 0}, {"buildDate": "2025-08-18", "jira": "Real Fail - EFRDY", "count": 2}, {"buildDate": "2025-08-18", "jira": "Real Fail - EL", "count": 0}, {"buildDate": "2025-09-25", "jira": "NTF-E103", "count": 0}, {"buildDate": "2025-09-25", "jira": "NTF-EL", "count": 0}, {"buildDate": "2025-09-25", "jira": "QUAN-146", "count": 0}, {"buildDate": "2025-09-25", "jira": "QUAN-473", "count": 1}, {"buildDate": "2025-09-25", "jira": "QUAN-546", "count": 2}, {"buildDate": "2025-09-25", "jira": "QUAN-570", "count": 0}, {"buildDate": "2025-09-25", "jira": "QUAN-755", "count": 0}, {"buildDate": "2025-09-25", "jira": "QUAN-757", "count": 0}, {"buildDate": "2025-09-25", "jira": "Real Fail - EFRDY", "count": 0}, {"buildDate": "2025-09-25", "jira": "Real Fail - EL", "count": 1}, {"buildDate": "2025-10-13", "jira": "NTF-E103", "count": 0}, {"buildDate": "2025-10-13", "jira": "NTF-EL", "count": 0}, {"buildDate": "2025-10-13", "jira": "QUAN-146", "count": 0}, {"buildDate": "2025-10-13", "jira": "QUAN-473", "count": 9}, {"buildDate": "2025-10-13", "jira": "QUAN-546", "count": 0}, {"buildDate": "2025-10-13", "jira": "QUAN-570", "count": 1}, {"buildDate": "2025-10-13", "jira": "QUAN-755", "count": 0}, {"buildDate": "2025-10-13", "jira": "QUAN-757", "count": 1}, {"buildDate": "2025-10-13", "jira": "Real Fail - EFRDY", "count": 1}, {"buildDate": "2025-10-13", "jira": "Real Fail - EL", "count": 0}, {"buildDate": "2025-11-04", "jira": "NTF-E103", "count": 0}, {"buildDate": "2025-11-04", "jira": "NTF-EL", "count": 0}, {"buildDate": "2025-11-04", "jira": "QUAN-146", "count": 0}, {"buildDate": "2025-11-04", "jira": "QUAN-473", "count": 0}, {"buildDate": "2025-11-04", "jira": "QUAN-546", "count": 0}, {"buildDate": "2025-11-04", "jira": "QUAN-570", "count": 0}, {"buildDate": "2025-11-04", "jira": "QUAN-755", "count": 0}, {"buildDate": "2025-11-04", "jira": "QUAN-757", "count": 0}, {"buildDate": "2025-11-04", "jira": "Real Fail - EFRDY", "count": 0}, {"buildDate": "2025-11-04", "jira": "Real Fail - EL", "count": 0}], "FPY": [{"buildDate": "2025-08-18", "jira": "NTF-E103", "count": 0}, {"buildDate": "2025-08-18", "jira": "NTF-EL", "count": 1}, {"buildDate": "2025-08-18", "jira": "QUAN-146", "count": 5}, {"buildDate": "2025-08-18", "jira": "QUAN-473", "count": 0}, {"buildDate": "2025-08-18", "jira": "QUAN-546", "count": 0}, {"buildDate": "2025-08-18", "jira": "QUAN-570", "count": 0}, {"buildDate": "2025-08-18", "jira": "QUAN-755", "count": 1}, {"buildDate": "2025-08-18", "jira": "QUAN-757", "count": 5}, {"buildDate": "2025-08-18", "jira": "Real Fail - EFRDY", "count": 2}, {"buildDate": "2025-08-18", "jira": "Real Fail - EL", "count": 3}, {"buildDate": "2025-09-25", "jira": "NTF-E103", "count": 2}, {"buildDate": "2025-09-25", "jira": "NTF-EL", "count": 0}, {"buildDate": "2025-09-25", "jira": "QUAN-146", "count": 1}, {"buildDate": "2025-09-25", "jira": "QUAN-473", "count": 1}, {"buildDate": "2025-09-25", "jira": "QUAN-546", "count": 2}, {"buildDate": "2025-09-25", "jira": "QUAN-570", "count": 0}, {"buildDate": "2025-09-25", "jira": "QUAN-755", "count": 0}, {"buildDate": "2025-09-25", "jira": "QUAN-757", "count": 4}, {"buildDate": "2025-09-25", "jira": "Real Fail - EFRDY", "count": 0}, {"buildDate": "2025-09-25", "jira": "Real Fail - EL", "count": 2}, {"buildDate": "2025-10-13", "jira": "NTF-E103", "count": 3}, {"buildDate": "2025-10-13", "jira": "NTF-EL", "count": 0}, {"buildDate": "2025-10-13", "jira": "QUAN-146", "count": 1}, {"buildDate": "2025-10-13", "jira": "QUAN-473", "count": 9}, {"buildDate": "2025-10-13", "jira": "QUAN-546", "count": 0}, {"buildDate": "2025-10-13", "jira": "QUAN-570", "count": 1}, {"buildDate": "2025-10-13", "jira": "QUAN-755", "count": 0}, {"buildDate": "2025-10-13", "jira": "QUAN-757", "count": 14}, {"buildDate": "2025-10-13", "jira": "Real Fail - EFRDY", "count": 1}, {"buildDate": "2025-10-13", "jira": "Real Fail - EL", "count": 0}, {"buildDate": "2025-11-04", "jira": "NTF-E103", "count": 1}, {"buildDate": "2025-11-04", "jira": "NTF-EL", "count": 0}, {"buildDate": "2025-11-04", "jira": "QUAN-146", "count": 0}, {"buildDate": "2025-11-04", "jira": "QUAN-473", "count": 0}, {"buildDate": "2025-11-04", "jira": "QUAN-546", "count": 0}, {"buildDate": "2025-11-04", "jira": "QUAN-570", "count": 0}, {"buildDate": "2025-11-04", "jira": "QUAN-755", "count": 0}, {"buildDate": "2025-11-04", "jira": "QUAN-757", "count": 0}, {"buildDate": "2025-11-04", "jira": "Real Fail - EFRDY", "count": 0}, {"buildDate": "2025-11-04", "jira": "Real Fail - EL", "count": 0}]}, "heatmaps": {"ETH_PORT": {"QUAN-757": {"Port 12": {"2025-09-25": 2, "2025-10-13": 6, "2025-08-18": 3}, "Port 9": {"2025-09-25": 2, "2025-10-13": 3, "2025-08-18": 1}, "Port 4": {"2025-10-13": 8, "2025-08-18": 3}, "Port 6": {"2025-10-13": 5, "2025-08-18": 1}, "Port 10": {"2025-10-13": 3, "2025-08-18": 3}, "Port 7": {"2025-10-13": 3, "2025-08-18": 2}, "Port 11": {"2025-08-18": 2}, "Port 13": {"2025-08-18": 2}}}, "MODEL": {"QUAN-546": {"P150a": {"2025-09-25": 7}}, "QUAN-757": {"P150a": {"2025-09-25": 4, "2025-10-13": 28, "2025-08-18": 17}}, "QUAN-473": {"P150a": {"2025-09-25": 4, "2025-10-13": 22}}, "Real Fail - EL": {"P150a": {"2025-09-25": 3, "2025-08-18": 4}}, "QUAN-146": {"P150a": {"2025-09-25": 3, "2025-10-13": 2, "2025-08-18": 7}}, "NTF-E103": {"P150a": {"2025-09-25": 2, "2025-10-13": 3, "2025-11-04": 1}}, "Real Fail - EFRDY": {"P150a": {"2025-10-13": 1, "2025-08-18": 6}}, "QUAN-570": {"P150a": {"2025-10-13": 1}}, "NTF-EL": {"P150a": {"2025-08-18": 1}}, "QUAN-755": {"P150a": {"2025-08-18": 1}}}, "CONTROLLER": {"QUAN-473": {"Ctrl 255": {"2025-09-25": 4, "2025-10-13": 22}}}}, "top_jira": "QUAN-757"}, "P150b": {"yield_data": [{"buildDate": "2025-08-18", "totalUnits": 847, "fpy": 97.17, "apy": 99.53}, {"buildDate": "2025-09-25", "totalUnits": 800, "fpy": 92.62, "apy": 98.5}, {"buildDate": "2025-10-13", "totalUnits": 1367, "fpy": 90.86, "apy": 98.61}, {"buildDate": "2025-11-04", "totalUnits": 42, "fpy": 90.48, "apy": 95.24}], "overall_stats": {"totalUnits": 3056, "passed": 2844, "fixed": 175, "failed": 37, "overallFPY": 93.06, "overallAPY": 98.79, "modelBreakdown": {"P150b": 3056}}, "trends": {"APY": [{"buildDate": "2025-08-18", "jira": "NTF-E103", "count": 0}, {"buildDate": "2025-08-18", "jira": "NTF-EFRDY", "count": 0}, {"buildDate": "2025-08-18", "jira": "QUAN-146", "count": 0}, {"buildDate": "2025-08-18", "jira": "QUAN-473", "count": 2}, {"buildDate": "2025-08-18", "jira": "QUAN-546", "count": 1}, {"buildDate": "2025-08-18", "jira": "QUAN-570", "count": 0}, {"buildDate": "2025-08-18", "jira": "QUAN-755", "count": 0}, {"buildDate": "2025-08-18", "jira": "QUAN-757", "count": 0}, {"buildDate": "2025-08-18", "jira": "Real Fail - EFRDY", "count": 1}, {"buildDate": "2025-08-18", "jira": "Real Fail - EL", "count": 0}, {"buildDate": "2025-09-25", "jira": "NTF-E103", "count": 0}, {"buildDate": "2025-09-25", "jira": "NTF-EFRDY", "count": 1}, {"buildDate": "2025-09-25", "jira": "QUAN-146", "count": 0}, {"buildDate": "2025-09-25", "jira": "QUAN-473", "count": 6}, {"buildDate": "2025-09-25", "jira": "QUAN-546", "count": 2}, {"buildDate": "2025-09-25", "jira": "QUAN-570", "count": 2}, {"buildDate": "2025-09-25", "jira": "QUAN-755", "count": 1}, {"buildDate": "2025-09-25", "jira": "QUAN-757", "count": 1}, {"buildDate": "2025-09-25", "jira": "Real Fail - EFRDY", "count": 1}, {"buildDate": "2025-09-25", "jira": "Real Fail - EL", "count": 1}, {"buildDate": "2025-10-13", "jira": "NTF-E103", "count": 0}, {"buildDate": "2025-10-13", "jira": "NTF-EFRDY", "count": 2}, {"buildDate": "2025-10-13", "jira": "QUAN-146", "count": 0}, {"buildDate": "2025-10-13", "jira": "QUAN-473", "count": 16}, {"buildDate": "2025-10-13", "jira": "QUAN-546", "count": 1}, {"buildDate": "2025-10-13", "jira": "QUAN-570", "count": 1}, {"buildDate": "2025-10-13", "jira": "QUAN-755", "count": 0}, {"buildDate": "2025-10-13", "jira": "QUAN-757", "count": 0}, {"buildDate": "2025-10-13", "jira": "Real Fail - EFRDY", "count": 1}, {"buildDate": "2025-10-13", "jira": "Real Fail - EL", "count": 1}, {"buildDate": "2025-11-04", "jira": "NTF-E103", "count": 0}, {"buildDate": "2025-11-04", "jira": "NTF-EFRDY", "count": 0}, {"buildDate": "2025-11-04", "jira": "QUAN-146", "count": 0}, {"buildDate": "2025-11-04", "jira": "QUAN-473", "count": 0}, {"buildDate": "2025-11-04", "jira": "QUAN-546", "count": 0}, {"buildDate": "2025-11-04", "jira": "QUAN-570", "count": 0}, {"buildDate": "2025-11-04", "jira": "QUAN-755", "count": 0}, {"buildDate": "2025-11-04", "jira": "QUAN-757", "count": 2}, {"buildDate": "2025-11-04", "jira": "Real Fail - EFRDY", "count": 0}, {"buildDate": "2025-11-04", "jira": "Real Fail - EL", "count": 0}], "FPY": [{"buildDate": "2025-08-18", "jira": "NTF-E103", "count": 0}, {"buildDate": "2025-08-18", "jira": "NTF-EFRDY", "count": 0}, {"buildDate": "2025-08-18", "jira": "QUAN-146", "count": 2}, {"buildDate": "2025-08-18", "jira": "QUAN-473", "count": 2}, {"buildDate": "2025-08-18", "jira": "QUAN-546", "count": 1}, {"buildDate": "2025-08-18", "jira": "QUAN-570", "count": 0}, {"buildDate": "2025-08-18", "jira": "QUAN-755", "count": 0}, {"buildDate": "2025-08-18", "jira": "QUAN-757", "count": 12}, {"buildDate": "2025-08-18", "jira": "Real Fail - EFRDY", "count": 1}, {"buildDate": "2025-08-18", "jira": "Real Fail - EL", "count": 7}, {"buildDate": "2025-09-25", "jira": "NTF-E103", "count": 0}, {"buildDate": "2025-09-25", "jira": "NTF-EFRDY", "count": 1}, {"buildDate": "2025-09-25", "jira": "QUAN-146", "count": 4}, {"buildDate": "2025-09-25", "jira": "QUAN-473", "count": 7}, {"buildDate": "2025-09-25", "jira": "QUAN-546", "count": 2}, {"buildDate": "2025-09-25", "jira": "QUAN-570", "count": 2}, {"buildDate": "2025-09-25", "jira": "QUAN-755", "count": 1}, {"buildDate": "2025-09-25", "jira": "QUAN-757", "count": 42}, {"buildDate": "2025-09-25", "jira": "Real Fail - EFRDY", "count": 1}, {"buildDate": "2025-09-25", "jira": "Real Fail - EL", "count": 3}, {"buildDate": "2025-10-13", "jira": "NTF-E103", "count": 1}, {"buildDate": "2025-10-13", "jira": "NTF-EFRDY", "count": 3}, {"buildDate": "2025-10-13", "jira": "QUAN-146", "count": 1}, {"buildDate": "2025-10-13", "jira": "QUAN-473", "count": 16}, {"buildDate": "2025-10-13", "jira": "QUAN-546", "count": 1}, {"buildDate": "2025-10-13", "jira": "QUAN-570", "count": 1}, {"buildDate": "2025-10-13", "jira": "QUAN-755", "count": 0}, {"buildDate": "2025-10-13", "jira": "QUAN-757", "count": 100}, {"buildDate": "2025-10-13", "jira": "Real Fail - EFRDY", "count": 1}, {"buildDate": "2025-10-13", "jira": "Real Fail - EL", "count": 4}, {"buildDate": "2025-11-04", "jira": "NTF-E103", "count": 0}, {"buildDate": "2025-11-04", "jira": "NTF-EFRDY", "count": 1}, {"buildDate": "2025-11-04", "jira": "QUAN-146", "count": 0}, {"buildDate": "2025-11-04", "jira": "QUAN-473", "count": 0}, {"buildDate": "2025-11-04", "jira": "QUAN-546", "count": 0}, {"buildDate": "2025-11-04", "jira": "QUAN-570", "count": 0}, {"buildDate": "2025-11-04", "jira": "QUAN-755", "count": 0}, {"buildDate": "2025-11-04", "jira": "QUAN-757", "count": 3}, {"buildDate": "2025-11-04", "jira": "Real Fail - EFRDY", "count": 0}, {"buildDate": "2025-11-04", "jira": "Real Fail - EL", "count": 0}]}, "heatmaps": {"ETH_PORT": {"QUAN-757": {"Port 12": {"2025-09-25": 11, "2025-10-13": 41, "2025-11-04": 7, "2025-08-18": 2}, "Port 4": {"2025-09-25": 25, "2025-10-13": 32, "2025-11-04": 2}, "Port 7": {"2025-09-25": 7, "2025-10-13": 3, "2025-11-04": 1, "2025-08-18": 2}, "Port 9": {"2025-09-25": 8, "2025-10-13": 51, "2025-08-18": 5}, "Port 11": {"2025-09-25": 6, "2025-10-13": 25, "2025-08-18": 2}, "Port 6": {"2025-09-25": 3, "2025-08-18": 4}, "Port 13": {"2025-09-25": 3, "2025-10-13": 4, "2025-08-18": 5}, "Port 10": {"2025-09-25": 2, "2025-10-13": 6, "2025-11-04": 2, "2025-08-18": 1}}}, "MODEL": {"NTF-EFRDY": {"P150b": {"2025-09-25": 2, "2025-10-13": 16, "2025-11-04": 1}}, "QUAN-473": {"P150b": {"2025-09-25": 23, "2025-10-13": 40, "2025-08-18": 8}}, "QUAN-757": {"P150b": {"2025-09-25": 65, "2025-10-13": 162, "2025-11-04": 12, "2025-08-18": 21}}, "Real Fail - EL": {"P150b": {"2025-09-25": 3, "2025-10-13": 5, "2025-08-18": 7}}, "QUAN-146": {"P150b": {"2025-09-25": 5, "2025-10-13": 1, "2025-08-18": 2}}, "Real Fail - EFRDY": {"P150b": {"2025-09-25": 1, "2025-10-13": 3, "2025-08-18": 2}}, "QUAN-570": {"P150b": {"2025-09-25": 6, "2025-10-13": 1}}, "QUAN-546": {"P150b": {"2025-09-25": 2, "2025-10-13": 1, "2025-08-18": 7}}, "QUAN-755": {"P150b": {"2025-09-25": 2}}, "NTF-E103": {"P150b": {"2025-10-13": 2}}}, "CONTROLLER": {"QUAN-473": {"Ctrl 255": {"2025-09-25": 23, "2025-10-13": 40, "2025-08-18": 8}}}}, "top_jira": "QUAN-757"}, "P150c": {"yield_data": [{"buildDate": "2025-09-25", "totalUnits": 50, "fpy": 94.0, "apy": 100.0}, {"buildDate": "2025-10-13", "totalUnits": 150, "fpy": 88.67, "apy": 96.0}], "overall_stats": {"totalUnits": 200, "passed": 180, "fixed": 14, "failed": 6, "overallFPY": 90.0, "overallAPY": 97.0, "modelBreakdown": {"P150c": 200}}, "trends": {"APY": [{"buildDate": "2025-09-25", "jira": "NTF-E103", "count": 0}, {"buildDate": "2025-09-25", "jira": "QUAN-473", "count": 0}, {"buildDate": "2025-09-25", "jira": "QUAN-570", "count": 0}, {"buildDate": "2025-09-25", "jira": "QUAN-757", "count": 0}, {"buildDate": "2025-09-25", "jira": "Real Fail - EL", "count": 0}, {"buildDate": "2025-10-13", "jira": "NTF-E103", "count": 0}, {"buildDate": "2025-10-13", "jira": "QUAN-473", "count": 6}, {"buildDate": "2025-10-13", "jira": "QUAN-570", "count": 0}, {"buildDate": "2025-10-13", "jira": "QUAN-757", "count": 0}, {"buildDate": "2025-10-13", "jira": "Real Fail - EL", "count": 1}], "FPY": [{"buildDate": "2025-09-25", "jira": "NTF-E103", "count": 0}, {"buildDate": "2025-09-25", "jira": "QUAN-473", "count": 0}, {"buildDate": "2025-09-25", "jira": "QUAN-570", "count": 1}, {"buildDate": "2025-09-25", "jira": "QUAN-757", "count": 1}, {"buildDate": "2025-09-25", "jira": "Real Fail - EL", "count": 1}, {"buildDate": "2025-10-13", "jira": "NTF-E103", "count": 1}, {"buildDate": "2025-10-13", "jira": "QUAN-473", "count": 6}, {"buildDate": "2025-10-13", "jira": "QUAN-570", "count": 0}, {"buildDate": "2025-10-13", "jira": "QUAN-757", "count": 8}, {"buildDate": "2025-10-13", "jira": "Real Fail - EL", "count": 3}]}, "heatmaps": {"ETH_PORT": {"QUAN-757": {"Port 4": {"2025-09-25": 1, "2025-10-13": 3}, "Port 11": {"2025-10-13": 1}, "Port 13": {"2025-10-13": 1}, "Port 9": {"2025-10-13": 2}, "Port 12": {"2025-10-13": 5}, "Port 10": {"2025-10-13": 4}}}, "MODEL": {"Real Fail - EL": {"P150c": {"2025-09-25": 1, "2025-10-13": 5}}, "QUAN-570": {"P150c": {"2025-09-25": 1}}, "QUAN-757": {"P150c": {"2025-09-25": 1, "2025-10-13": 16}}, "QUAN-473": {"P150c": {"2025-10-13": 11}}, "NTF-E103": {"P150c": {"2025-10-13": 1}}}, "CONTROLLER": {"QUAN-473": {"Ctrl 255": {"2025-10-13": 11}}}}, "top_jira": "QUAN-757"}};
+        const JIRA_MAP = {"QUAN-210": "DRAM training failure - EM", "QUAN-920": "PCIe link downgrade detected", "QUAN-788": "PCIe link downgrade detected", "QUAN-900": "The BMC firmware update Not Pass!", "QUAN-897": "ARC_BMC_I2C_FP_TEST: STM32 (#U4, bus 6 addr 0x12) I2C access fails (CC=0xff)", "QUAN-898": "ARC_BMC_CPLD_CHECK: PDB-M1 PSU3_ACOK_N / PSU3_PWRGD_N failure", "QUAN-758": "Unable to retrieve PCIe link speed and lane width information for E1.S-2 NVMe drive", "QUAN-829": "[UBB*][ASIC6] Chip: C* asic version execute failed", "WAIVED - QUAN-841": "QSFP-DD module failure", "WAIVED-QUAN-841": "QSFP-DD module failure", "QUAN-841": "QSFP-DD module failure", "QUAN-937": "Unable to Connect the HCA's through the link", "QUAN-938": "Empty DIMM slots", "QUAN-176": "DRAM EC# error failed at 14G speed.", "Need Jira for E99 SCRIPT_ERROR": "Error Code: E99 | SCRIPT_ERROR", "NeedJiraforE99SCRIPT_ERROR": "Error Code: E99 | SCRIPT_ERROR", "Need Jira for E12 I2C Fail": "Error Code: E12 | I2C Fail", "NeedJiraforE12I2CFail": "Error Code: E12 | I2C Fail", "Need Jira for E14 BITCOMPARE_FAIL": "Error Code: E14 | BITCOMPARE_FAIL", "NeedJiraforE14BITCOMPARE_FAIL": "Error Code: E14 | BITCOMPARE_FAIL", "Need Jira for ECX Failure": "Error Code: ECX | DDR_TEST_FAIL_ALL", "NeedJiraforECXFailure": "Error Code: ECX | DDR_TEST_FAIL_ALL", "QUAN-946": "Error Code: E32-0 | ETH_IDLE_FAIL-QSFP", "QUAN-858": "Error Code: E32-4 | ETH_IDLE_FAIL-IN-UBB", "QUAN-948": "Error Code: E32-3 | ETH_IDLE_FAIL-ST", "QUAN-947": "Error Code: E32-1 | ETH_IDLE_FAIL-LT with Retimer", "QUAN-949": "Error Code: E32-2 | ETH_IDLE_FAIL-LT without Retimer", "QUAN-284": "FT_BURNIN - tmon_max exceeds the threshold", "QUAN-825": "UBB ASIC Power Rail Fail", "QUAN-704": "Observed \"ASIC is not alive\" in CPLD without PWRGD failure.", "WAIVED - QUAN-856": "Sensors with invalid readings detected. \nTEMP_UBB1_RT2: 0 degrees C", "WAIVED-QUAN-856": "Sensors with invalid readings detected. \nTEMP_UBB1_RT2: 0 degrees C", "QUAN-856": "Sensors with invalid readings detected. \nTEMP_UBB1_RT2: 0 degrees C", "QUAN-784": "ETH_STREAM_APP_FAIL - Uncorrected codewords", "QUAN-844": "No readings for Power_MB_HSC and TEMP_PCIe_RT#", "QUAN-785": "E33 CRC/BER/timeout error observed during ETH_STREAM_APP_FAIL.", "QUAN-787": "PCIe RX error over threshold", "WAIVED - Missing OCP in the system": "Missing OCP in the system", "WAIVED-MissingOCPinthesystem": "Missing OCP in the system", "QUAN-802": "UBB ETH Retimer Power Rail Fail", "Done - QUAN-651": "Unable to send RAW command to PHY# address", "Done-QUAN-651": "Unable to send RAW command to PHY# address", "QUAN-651": "Unable to send RAW command to PHY# address", "QUAN-401": "DDR Training failure - ET", "QUAN-860": "Set A3 Mode Fail: Read 0xffffffff from ARC scratch", "Need Jira for QSFP-LED Failure": "QSFP-LED Failure", "NeedJiraforQSFP-LEDFailure": "QSFP-LED Failure", "Need Jira for UBB PHY VER CHECK failure": "UBB PHY VER CHECK Summary Failed", "NeedJiraforUBBPHYVERCHECKfailure": "UBB PHY VER CHECK Summary Failed", "WAIVED - FW failed to get updated": "FW failed to get updated, passed after retry.", "WAIVED-FWfailedtogetupdated": "FW failed to get updated, passed after retry.", "QUAN-1065": "UBB1\u2013UBB4 CPLD domain fail on SMB_I2C_BMC_SCL/SDA", "QUAN-845": "Error Code E34 | ETH_TRAIN_FAIL_ALL", "QUAN-857": "Error Code ET | DDR_TRAIN_FAI", "QUAN-459": "Error Code EL | COMMUNICATION_FAIL", "QUAN-1001": "Error Code EC | DDR_TEST_FAIL", "NTF - E12": "Error Code E12 | I2C_FAIL", "NTF-E12": "Error Code E12 | I2C_FAIL", "NTF - E103": "Error Code E103 | HIGH_TEMPERATUE", "NTF-E103": "Error Code E103 | HIGH_TEMPERATUE", "NTF - E04": "Error Code E12 | PCIE_SPEED_WIDTH_FAIL", "NTF-E04": "Error Code E12 | PCIE_SPEED_WIDTH_FAIL", "NTF - EFCMT": "Error Code EFCMT | FW_COMMIT_FAIL", "NTF-EFCMT": "Error Code EFCMT | FW_COMMIT_FAIL", "QUAN-757": "Error Code E34 | ETH_TRAIN_FAIL_ALL", "Real Fail - EFRDY": "Error Code EFRDY | FW_NOT_READY", "RealFail-EFRDY": "Error Code EFRDY | FW_NOT_READY", "NTF - EFRDY": "Error Code EFRDY | FW_NOT_READY", "NTF-EFRDY": "Error Code EFRDY | FW_NOT_READY", "QUAN-146": "PCIe PCIe speed/width check ailure", "QUAN-546": "PCIe PCIe speed/width check hard failure", "QUAN-473": "DDR training failure(ET, EFRDY) on P150a and P150b", "NTF - EL": "Error Code EL | COMMUNICATION_FAIL", "NTF-EL": "Error Code EL | COMMUNICATION_FAIL", "Real Fail - EL": "Error Code EL | COMMUNICATION_FAIL", "RealFail-EL": "Error Code EL | COMMUNICATION_FAIL", "QUAN-570": "Error Code EC | DDR_TEST_FAIL", "QUAN-755": "Error Code EFCMT | FW_COMMIT_FAIL", "QUAN-487": "PCIe downgrade issue detected during BHFT and pre-test", "QUAN-370": "ASIC lost issue", "MFG Tool Issue": "MFG Tool Issue, repacked MFG with correct firmware location then passed.", "MFGToolIssue": "MFG Tool Issue, repacked MFG with correct firmware location then passed.", "Need Jira for USB Device BW is lower than expectation": "USB BW is lower than expected 80.0 MB/s", "NeedJiraforUSBDeviceBWislowerthanexpectation": "USB BW is lower than expected 80.0 MB/s", "Need Jira for USB device cannot be found": "USB device cannot be found", "NeedJiraforUSBdevicecannotbefound": "USB device cannot be found"};
+        const JIRA_URLS = {"QUAN-210": "https://ext-tenstorrent.atlassian.net/browse/QUAN-210", "QUAN-920": "https://ext-tenstorrent.atlassian.net/browse/QUAN-920", "QUAN-788": "https://ext-tenstorrent.atlassian.net/browse/QUAN-788", "QUAN-900": "https://ext-tenstorrent.atlassian.net/browse/QUAN-900", "QUAN-897": "https://ext-tenstorrent.atlassian.net/browse/QUAN-897", "QUAN-898": "https://ext-tenstorrent.atlassian.net/browse/QUAN-898", "QUAN-758": "https://ext-tenstorrent.atlassian.net/browse/QUAN-758", "QUAN-829": "https://ext-tenstorrent.atlassian.net/browse/QUAN-829", "WAIVED - QUAN-841": "https://ext-tenstorrent.atlassian.net/browse/QUAN-841", "WAIVED-QUAN-841": "https://ext-tenstorrent.atlassian.net/browse/QUAN-841", "QUAN-937": "https://ext-tenstorrent.atlassian.net/browse/QUAN-937", "QUAN-938": "https://ext-tenstorrent.atlassian.net/browse/QUAN-938", "QUAN-176": "https://ext-tenstorrent.atlassian.net/browse/QUAN-176", "QUAN-946": "https://ext-tenstorrent.atlassian.net/browse/QUAN-946", "QUAN-858": "https://ext-tenstorrent.atlassian.net/browse/QUAN-858", "QUAN-948": "https://ext-tenstorrent.atlassian.net/browse/QUAN-948", "QUAN-947": "https://ext-tenstorrent.atlassian.net/browse/QUAN-947", "QUAN-949": "https://ext-tenstorrent.atlassian.net/browse/QUAN-949", "QUAN-284": "https://ext-tenstorrent.atlassian.net/browse/QUAN-284", "QUAN-825": "https://ext-tenstorrent.atlassian.net/browse/QUAN-825", "QUAN-704": "https://ext-tenstorrent.atlassian.net/browse/QUAN-704", "WAIVED - QUAN-856": "https://ext-tenstorrent.atlassian.net/browse/QUAN-856", "WAIVED-QUAN-856": "https://ext-tenstorrent.atlassian.net/browse/QUAN-856", "QUAN-784": "https://ext-tenstorrent.atlassian.net/browse/QUAN-784", "QUAN-844": "https://ext-tenstorrent.atlassian.net/browse/QUAN-844", "QUAN-785": "https://ext-tenstorrent.atlassian.net/browse/QUAN-785", "QUAN-787": "https://ext-tenstorrent.atlassian.net/browse/QUAN-787", "QUAN-802": "https://ext-tenstorrent.atlassian.net/browse/QUAN-802", "Done - QUAN-651": "https://ext-tenstorrent.atlassian.net/browse/QUAN-651", "Done-QUAN-651": "https://ext-tenstorrent.atlassian.net/browse/QUAN-651", "QUAN-401": "https://ext-tenstorrent.atlassian.net/browse/QUAN-401", "QUAN-860": "https://ext-tenstorrent.atlassian.net/browse/QUAN-860", "QUAN-1065": "https://ext-tenstorrent.atlassian.net/browse/QUAN-1065", "QUAN-845": "https://ext-tenstorrent.atlassian.net/browse/QUAN-845", "QUAN-857": "https://ext-tenstorrent.atlassian.net/browse/QUAN-857", "QUAN-459": "https://ext-tenstorrent.atlassian.net/browse/QUAN-459", "QUAN-1001": "https://ext-tenstorrent.atlassian.net/browse/QUAN-1001", "QUAN-757": "https://ext-tenstorrent.atlassian.net/browse/QUAN-757", "QUAN-146": "https://ext-tenstorrent.atlassian.net/browse/QUAN-146", "QUAN-546": "https://ext-tenstorrent.atlassian.net/browse/QUAN-546", "QUAN-473": "https://ext-tenstorrent.atlassian.net/browse/QUAN-473", "QUAN-570": "https://ext-tenstorrent.atlassian.net/browse/QUAN-570", "QUAN-755": "https://ext-tenstorrent.atlassian.net/browse/QUAN-755", "QUAN-487": "https://ext-tenstorrent.atlassian.net/browse/QUAN-487", "QUAN-370": "https://ext-tenstorrent.atlassian.net/browse/QUAN-370"};
+        const DATES = ["2025-11-04", "2025-10-13", "2025-09-25", "2025-08-18"];
+
+        let currentData = null, yieldChart = null, trendChart = null;
+        let trendMode = 'APY', trendUnit = 'count', sortMode = 'APY';
+
+        function init() {
+            initDropdown('hmDateContent', 'hmDateBtn', updateHeatmaps);
+            initDropdown('summDateContent', 'summDateBtn', () => updateSummary(sortMode));
+            document.getElementById('jiraSelect').onchange = updateTrendChart;
+            document.getElementById('hmJiraSelect').onchange = updateHeatmaps;
+            renderDashboard();
+        }
+
+        function renderDashboard() {
+            const modelKey = document.getElementById('globalModel').value;
+            currentData = DATA[modelKey];
+            if (!currentData) return;
+
+            renderStats(); renderModelTable(); renderYieldChart();
+            const topJira = currentData.top_jira;
+            populateJiraSelect(topJira); populateHeatmapSelect(topJira);
+            updateTrendChart(); updateHeatmaps(); updateSummary(sortMode);
+        }
+
+        function renderStats() {
+            const s = currentData.overall_stats;
+            document.getElementById('statsContainer').innerHTML = `
+                <div class="stat-box"><div class="stat-val" style="color:white">${s.totalUnits}</div><div class="stat-lbl">Total Units</div></div>
+                <div class="stat-box"><div class="stat-val" style="color:var(--accent-success)">${s.passed}</div><div class="stat-lbl">Passed</div></div>
+                <div class="stat-box"><div class="stat-val" style="color:var(--accent-secondary)">${s.fixed}</div><div class="stat-lbl">Fixed</div></div>
+                <div class="stat-box"><div class="stat-val" style="color:var(--accent-danger)">${s.failed}</div><div class="stat-lbl">Failed</div></div>
+                <div class="stat-box"><div class="stat-val" style="color:var(--accent-primary)">${s.overallFPY}%</div><div class="stat-lbl">Overall FPY</div></div>
+                <div class="stat-box"><div class="stat-val" style="color:var(--accent-primary)">${s.overallAPY}%</div><div class="stat-lbl">Overall APY</div></div>
+            `;
+        }
+
+        function renderModelTable() {
+            const rows = Object.entries(currentData.overall_stats.modelBreakdown).map(([k,v]) => `<tr><td>${k}</td><td style="text-align:right; font-family:'JetBrains Mono'">${v}</td></tr>`).join('');
+            document.querySelector('#modelTable tbody').innerHTML = rows;
+        }
+
+        function renderYieldChart() {
+            const ctx = document.getElementById('yieldChart').getContext('2d');
+            if(yieldChart) yieldChart.destroy();
+            const d = currentData.yield_data;
+            yieldChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: d.map(x => x.buildDate),
+                    datasets: [
+                        { label: 'APY %', data: d.map(x => x.apy), borderColor: '#0ea5e9', backgroundColor: 'rgba(14,165,233,0.1)', fill: true, tension: 0.3 },
+                        { label: 'FPY %', data: d.map(x => x.fpy), borderColor: '#f59e0b', backgroundColor: 'transparent', borderDash:[5,5], tension: 0.3 }
+                    ]
+                },
+                options: { 
+                    responsive: true, 
+                    maintainAspectRatio: false, 
+                    scales: { 
+                        y: { min: 0, max: 100, grid: { color: '#2d3748' } } 
+                    }, 
+                    plugins: { legend: { labels: { color: '#e0e6ed' } } } 
+                }
+            });
+        }
+
+        function setTrendMode(m) { trendMode = m; document.getElementById('btnAPY').className = m === 'APY' ? 'active' : ''; document.getElementById('btnFPY').className = m === 'FPY' ? 'active' : ''; updateTrendChart(); }
+        function setTrendUnit(u) { trendUnit = u; document.getElementById('btnCount').className = u === 'count' ? 'active' : ''; document.getElementById('btnPercent').className = u === 'percent' ? 'active' : ''; updateTrendChart(); }
+
+        function populateJiraSelect(top) {
+            const sel = document.getElementById('jiraSelect'); sel.innerHTML = '';
+            const all = [...new Set([...currentData.trends.APY.map(x=>x.jira), ...currentData.trends.FPY.map(x=>x.jira)])].sort();
+            all.forEach(j => {
+                const desc = JIRA_MAP[j] ? ' - ' + JIRA_MAP[j].substring(0, 50) + '...' : '';
+                const opt = new Option(j + desc, j);
+                if(j === top) opt.selected = true;
+                sel.add(opt);
+            });
+            if(!top && all.length > 0) sel.options[0].selected = true;
+        }
+
+        function updateTrendChart() {
+            const sel = Array.from(document.getElementById('jiraSelect').selectedOptions).map(o => o.value);
+            const src = currentData.trends[trendMode];
+            const dates = currentData.yield_data.map(d => d.buildDate);
+            const datasets = sel.map((j, i) => ({
+                label: j,
+                data: dates.map(d => {
+                    const rec = src.find(r => r.jira === j && r.buildDate === d);
+                    const val = rec ? rec.count : 0;
+                    if (trendUnit === 'count') return val;
+                    const total = (currentData.yield_data.find(y => y.buildDate === d) || {totalUnits:0}).totalUnits;
+                    return total > 0 ? ((val / total) * 100).toFixed(2) : 0;
+                }),
+                borderColor: `hsl(${(i * 137.5) % 360}, 70%, 50%)`, tension: 0.2
+            }));
+
+            if(trendChart) trendChart.destroy();
+            
+            const yTitle = trendUnit === 'count' ? 'Count' : 'Percentage (%)';
+            const yMax = trendUnit === 'percent' ? 100 : undefined;
+            
+            trendChart = new Chart(document.getElementById('jiraChart'), {
+                type: 'line', data: { labels: dates, datasets },
+                options: { 
+                    responsive: true, maintainAspectRatio: false, 
+                    scales: { 
+                        y: { beginAtZero: true, max: yMax, grid: { color: '#2d3748' }, title: { display: true, text: yTitle, color: '#888' } } 
+                    }, 
+                    plugins: { legend: { labels: { color: '#e0e6ed' } } } 
+                }
+            });
+        }
+
+        function populateHeatmapSelect(top) {
+            const sel = document.getElementById('hmJiraSelect'); sel.innerHTML = '';
+            const hmJiras = new Set();
+            ['ETH_PORT', 'MODEL', 'CONTROLLER'].forEach(t => { if(currentData.heatmaps[t]) Object.keys(currentData.heatmaps[t]).forEach(k => hmJiras.add(k)); });
+            const sorted = [...hmJiras].sort();
+            sorted.forEach(j => {
+                const desc = JIRA_MAP[j] ? ' - ' + JIRA_MAP[j].substring(0, 50) + '...' : '';
+                const opt = new Option(j + desc, j);
+                sel.add(opt);
+            });
+            if(top && sorted.includes(top)) sel.value = top;
+        }
+
+        function updateHeatmaps() {
+            const jira = document.getElementById('hmJiraSelect').value;
+            const dates = getSelectedDates('hmDateContent');
+            ['ETH_PORT', 'CONTROLLER', 'MODEL'].forEach(t => drawHeatmap(t, 'hm-' + t.replace('_',''), jira, dates));
+        }
+
+        function drawHeatmap(type, id, jira, dates) {
+            const container = document.getElementById(id);
+            if(!jira || !currentData.heatmaps[type] || !currentData.heatmaps[type][jira]) { container.innerHTML = '<span style="color:#666;font-style:italic">No data</span>'; return; }
+            const raw = currentData.heatmaps[type][jira];
+            const grid = {}; let max = 0;
+            Object.keys(raw).forEach(k => {
+                let sum = 0;
+                Object.entries(raw[k]).forEach(([d, v]) => { if(dates.includes(d)) sum += v; });
+                if(sum > 0) { grid[k] = sum; if(sum > max) max = sum; }
+            });
+            if(Object.keys(grid).length === 0) { container.innerHTML = '<span style="color:#666">No failures</span>'; return; }
+            const keys = Object.keys(grid).sort((a,b) => a.localeCompare(b, undefined, {numeric: true, sensitivity: 'base'}));
+            let html = '<table><tr>';
+            keys.forEach(k => {
+                const v = grid[k], r = v / max;
+                let bg = r > 0.75 ? 'rgba(239,68,68,0.9)' : (r > 0.35 ? 'rgba(245,158,11,0.7)' : 'rgba(14,165,233,0.4)');
+                let border = r > 0.75 ? 'border:2px solid white' : 'border:1px solid #333';
+                html += `<td style="width:40px;height:40px;${border}"><div class="heatmap-cell" style="background:${bg}">${v}</div><div style="font-size:0.7rem;color:#888;text-align:center">${k}</div></td>`;
+            });
+            html += '</tr></table>'; container.innerHTML = html;
+        }
+
+        function updateSummary(mode) {
+            sortMode = mode || 'APY';
+            document.getElementById('sortAPY').className = sortMode === 'APY' ? 'active' : '';
+            document.getElementById('sortFPY').className = sortMode === 'FPY' ? 'active' : '';
+            const dates = getSelectedDates('summDateContent');
+            let total = 0;
+            currentData.yield_data.forEach(y => { if(dates.includes(y.buildDate)) total += y.totalUnits; });
+            if(total === 0) total = 1;
+            const stats = {};
+            ['FPY','APY'].forEach(m => {
+                currentData.trends[m].forEach(r => {
+                    if(dates.includes(r.buildDate)) {
+                        if(!stats[r.jira]) stats[r.jira] = {fpy:0, apy:0};
+                        stats[r.jira][m.toLowerCase()] += r.count;
+                    }
+                });
+            });
+            const key = sortMode === 'APY' ? 'apy' : 'fpy';
+            document.querySelector('#summaryTable tbody').innerHTML = Object.keys(stats).sort((a,b) => stats[b][key] - stats[a][key]).map(j => {
+                const s = stats[j], url = JIRA_URLS[j], link = url ? `<a href="${url}" target="_blank">${j}</a>` : j, desc = JIRA_MAP[j] || "";
+                const ia = ((s.apy/total)*100).toFixed(2), ifp = ((s.fpy/total)*100).toFixed(2);
+                return `<tr><td style="font-weight:bold">${link}</td><td style="font-size:0.8rem;color:#94a3b8">${desc}</td><td style="text-align:center">${s.fpy}</td><td style="text-align:center">${s.apy}</td><td style="text-align:center; color:${ia>5?'var(--accent-danger)':'var(--accent-success)'}">${ia}%</td><td style="text-align:center; color:${ifp>5?'var(--accent-danger)':'var(--accent-success)'}">${ifp}%</td></tr>`;
+            }).join('');
+        }
+
+        function toggleDropdown(id) {
+            const els = document.querySelectorAll('.dropdown-content');
+            els.forEach(el => { if(el.id !== id) el.classList.remove('show'); });
+            document.getElementById(id).classList.toggle('show');
+        }
+        window.onclick = function(e) { if (!e.target.matches('.dropdown-btn') && !e.target.closest('.dropdown-content')) document.querySelectorAll('.dropdown-content').forEach(el => el.classList.remove('show')); };
+        function initDropdown(id, btnId, cb) {
+            const el = document.getElementById(id), btn = document.getElementById(btnId);
+            el.addEventListener('click', e => e.stopPropagation());
+            el.innerHTML = '<div class="dropdown-item"><input type="checkbox" value="ALL" checked> <strong>Select All</strong></div>' + DATES.map(d => `<div class="dropdown-item"><input type="checkbox" value="${d}" checked> ${d}</div>`).join('');
+            el.querySelectorAll('input').forEach(i => { i.addEventListener('change', e => { if(e.target.value === 'ALL') el.querySelectorAll('input').forEach(x => x.checked = e.target.checked); else if(!e.target.checked) el.querySelector('input[value="ALL"]').checked = false; const count = Array.from(el.querySelectorAll('input')).filter(x => x.value !== 'ALL' && x.checked).length; btn.innerText = count === DATES.length ? 'Select Builds (All)' : `Selected (${count})`; cb(); }); });
+        }
+        function getSelectedDates(id) { const chk = Array.from(document.getElementById(id).querySelectorAll('input:checked')).map(c => c.value); return chk.includes('ALL') ? DATES : chk; }
+        init();
+    </script>
+</body>
+</html>

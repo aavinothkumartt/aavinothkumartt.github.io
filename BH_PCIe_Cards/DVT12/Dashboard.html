@@ -1,0 +1,628 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BH PCIe Cards Yield Dashboard</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <div class="dashboard-container">
+        <!-- Header Section - PERFECT with new title -->
+        <header class="dashboard-header">
+            <h1>BH PCIe Cards Dashboard</h1>
+            <p class="generation-time">Generated on: 2025-11-13 11:25:04 CST</p>
+        </header>
+
+        <!-- Main Dashboard Grid -->
+        <div class="dashboard-grid-adjusted">
+            <!-- Left Column - Yield Quality Analysis -->
+            <section class="dashboard-section yield-quality">
+                <div class="section-header">
+                    <h2>Yield Quality Analysis</h2>
+                </div>
+                <div class="section-content">
+                    <div class="kpi-cards-grid">
+                        <div class="kpi-card">
+                            <div class="kpi-value">90.9%</div>
+                            <div class="kpi-label">First Pass Yield</div>
+                            <div class="kpi-sublabel">1711 units</div>
+                        </div>
+                        <div class="kpi-card">
+                            <div class="kpi-value">98.0%</div>
+                            <div class="kpi-label">Overall Yield</div>
+                            <div class="kpi-sublabel">1846 units</div>
+                        </div>
+                        <div class="kpi-card">
+                            <div class="kpi-value">7.2%</div>
+                            <div class="kpi-label">Fixed Units</div>
+                            <div class="kpi-sublabel">135 units</div>
+                        </div>
+                        <div class="kpi-card">
+                            <div class="kpi-value">2.0%</div>
+                            <div class="kpi-label">Failed Units</div>
+                            <div class="kpi-sublabel">37 units</div>
+                        </div>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="statusChart"></canvas>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Right Column - Yield Hitters Analysis (Stacked) -->
+            <section class="dashboard-section yield-hitters">
+                <div class="section-header">
+                    <h2>Yield Hitters Analysis</h2>
+                    <p>Impact analysis separated by affected units (yield impact) vs failure counts (issue frequency)</p>
+                </div>
+                <div class="section-content">
+                    <div class="stacked-charts">
+                        <div class="chart-container">
+                            <canvas id="yieldHittersAffectedUnitsChart"></canvas>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="yieldHittersFailureCountsChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <!-- Full Width Sections -->
+        <div class="full-width-sections">
+            <!-- Issue Analysis by JIRA Entry -->
+            <section class="dashboard-section full-width">
+                <div class="section-header">
+                    <h2>Issue Analysis by JIRA Entry</h2>
+                    <p>Detailed component analysis with JIRA-specific charts and heat maps (all components supported)</p>
+                </div>
+                <div class="section-content">
+                    <div id="jiraAnalysisContainer" class="jira-analysis-container">
+                        <!-- JIRA analysis cards will be generated here by JavaScript -->
+                    </div>
+                </div>
+            </section>
+
+            <!-- Overall Distributions Summary -->
+            <section class="dashboard-section full-width">
+                <div class="section-header">
+                    <h2>Overall Distributions Summary</h2>
+                    <p>Complete analysis of all 1883 tested units</p>
+                </div>
+                <div class="section-content">
+                    <div class="distribution-charts">
+                        <div class="chart-container">
+                            <canvas id="modelDistributionChart"></canvas>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="modelYieldChart"></canvas>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="categoryDistributionChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </div>
+
+    <!-- Data and Scripts -->
+    <script>
+        window.dashboardData = {
+  "yield_metrics": {
+    "total_units": 1883,
+    "first_pass_yield": 1711,
+    "all_passed_yield": 1846,
+    "fixed_units": 135,
+    "failed_units": 37,
+    "first_pass_percentage": 90.9,
+    "overall_pass_percentage": 98.0,
+    "fixed_percentage": 7.2,
+    "failed_percentage": 2.0
+  },
+  "status_distribution": {
+    "Passed": 1711,
+    "Fixed": 135,
+    "Failed": 37
+  },
+  "yield_hitters": [
+    {
+      "jira_entry": "NTF - QUAN-149",
+      "issue_description": "p150x cards ethernet_loopback_test failed",
+      "affected_units": 122,
+      "failure_counts": 138,
+      "failure_rate": "6.5%",
+      "description": "Hardware issue affecting 122 units across 138 test occurrences",
+      "has_test_data": true,
+      "notes": "Impact: 122 units (6.5% of total)",
+      "model_chart_data": {
+        "labels": [
+          "P150a",
+          "P150b",
+          "P150c"
+        ],
+        "data": [
+          14,
+          100,
+          8
+        ],
+        "total_count": 122
+      },
+      "asic_chart_data": {
+        "labels": [
+          "ASIC 1"
+        ],
+        "data": [
+          138
+        ],
+        "total_count": 138
+      },
+      "eth_chart_data": {
+        "labels": [
+          "ETH Port 4",
+          "ETH Port 6",
+          "ETH Port 7",
+          "ETH Port 9",
+          "ETH Port 10",
+          "ETH Port 11",
+          "ETH Port 12",
+          "ETH Port 13"
+        ],
+        "data": [
+          39,
+          1,
+          3,
+          35,
+          5,
+          19,
+          33,
+          3
+        ],
+        "total_count": 138
+      },
+      "controller_chart_data": {
+        "labels": [],
+        "data": []
+      },
+      "asic_eth_heatmap": {
+        "row_labels": [
+          "ASIC 1"
+        ],
+        "col_labels": [
+          "ETH 4",
+          "ETH 6",
+          "ETH 7",
+          "ETH 9",
+          "ETH 10",
+          "ETH 11",
+          "ETH 12",
+          "ETH 13"
+        ],
+        "matrix": [
+          [
+            39,
+            1,
+            3,
+            35,
+            5,
+            19,
+            33,
+            3
+          ]
+        ],
+        "max_value": 39
+      },
+      "asic_controller_heatmap": {
+        "row_labels": [],
+        "col_labels": [],
+        "matrix": [],
+        "max_value": 0
+      },
+      "summary_insights": [
+        {
+          "title": "NTF - QUAN-149 Critical Impact",
+          "description": "This issue affects 122 units (6.5% of total) - requires immediate attention",
+          "severity": "high"
+        }
+      ]
+    },
+    {
+      "jira_entry": "QUAN-473",
+      "issue_description": "DDR training failure(ET, EFRDY) on P150a and P150b",
+      "affected_units": 34,
+      "failure_counts": 36,
+      "failure_rate": "1.8%",
+      "description": "Hardware issue affecting 34 units across 36 test occurrences",
+      "has_test_data": true,
+      "notes": "Impact: 34 units (1.8% of total)",
+      "model_chart_data": {
+        "labels": [
+          "P150a",
+          "P150b",
+          "P150c"
+        ],
+        "data": [
+          9,
+          19,
+          6
+        ],
+        "total_count": 34
+      },
+      "asic_chart_data": {
+        "labels": [
+          "ASIC 1"
+        ],
+        "data": [
+          36
+        ],
+        "total_count": 36
+      },
+      "eth_chart_data": {
+        "labels": [],
+        "data": []
+      },
+      "controller_chart_data": {
+        "labels": [],
+        "data": []
+      },
+      "asic_eth_heatmap": {
+        "row_labels": [],
+        "col_labels": [],
+        "matrix": [],
+        "max_value": 0
+      },
+      "asic_controller_heatmap": {
+        "row_labels": [],
+        "col_labels": [],
+        "matrix": [],
+        "max_value": 0
+      },
+      "summary_insights": [
+        {
+          "title": "QUAN-473 Critical Impact",
+          "description": "This issue affects 34 units (1.8% of total) - requires immediate attention",
+          "severity": "high"
+        }
+      ]
+    },
+    {
+      "jira_entry": "NTF - EL",
+      "issue_description": "Chip Initialization Failure",
+      "affected_units": 7,
+      "failure_counts": 7,
+      "failure_rate": "0.4%",
+      "description": "Hardware issue affecting 7 units across 7 test occurrences",
+      "has_test_data": true,
+      "notes": "Impact: 7 units (0.4% of total)",
+      "model_chart_data": {
+        "labels": [
+          "P150b",
+          "P150c"
+        ],
+        "data": [
+          4,
+          3
+        ],
+        "total_count": 7
+      },
+      "asic_chart_data": {
+        "labels": [
+          "ASIC 1"
+        ],
+        "data": [
+          7
+        ],
+        "total_count": 7
+      },
+      "eth_chart_data": {
+        "labels": [],
+        "data": []
+      },
+      "controller_chart_data": {
+        "labels": [],
+        "data": []
+      },
+      "asic_eth_heatmap": {
+        "row_labels": [],
+        "col_labels": [],
+        "matrix": [],
+        "max_value": 0
+      },
+      "asic_controller_heatmap": {
+        "row_labels": [],
+        "col_labels": [],
+        "matrix": [],
+        "max_value": 0
+      },
+      "summary_insights": [
+        {
+          "title": "NTF - EL Moderate Impact",
+          "description": "Moderate impact affecting 7 units (0.4%)",
+          "severity": "medium"
+        }
+      ]
+    },
+    {
+      "jira_entry": "QUAN-439",
+      "issue_description": "ft_burnin test failed with error: HIGH_TEMPERATUE",
+      "affected_units": 6,
+      "failure_counts": 6,
+      "failure_rate": "0.3%",
+      "description": "Hardware issue affecting 6 units across 6 test occurrences",
+      "has_test_data": true,
+      "notes": "Impact: 6 units (0.3% of total)",
+      "model_chart_data": {
+        "labels": [
+          "P100a",
+          "P150a",
+          "P150b",
+          "P150c"
+        ],
+        "data": [
+          1,
+          3,
+          1,
+          1
+        ],
+        "total_count": 6
+      },
+      "asic_chart_data": {
+        "labels": [
+          "ASIC 1"
+        ],
+        "data": [
+          6
+        ],
+        "total_count": 6
+      },
+      "eth_chart_data": {
+        "labels": [],
+        "data": []
+      },
+      "controller_chart_data": {
+        "labels": [],
+        "data": []
+      },
+      "asic_eth_heatmap": {
+        "row_labels": [],
+        "col_labels": [],
+        "matrix": [],
+        "max_value": 0
+      },
+      "asic_controller_heatmap": {
+        "row_labels": [],
+        "col_labels": [],
+        "matrix": [],
+        "max_value": 0
+      },
+      "summary_insights": [
+        {
+          "title": "QUAN-439 Moderate Impact",
+          "description": "Moderate impact affecting 6 units (0.3%)",
+          "severity": "medium"
+        }
+      ]
+    },
+    {
+      "jira_entry": "QUAN-570",
+      "issue_description": "EC error dueing DRAM testing stage",
+      "affected_units": 2,
+      "failure_counts": 2,
+      "failure_rate": "0.1%",
+      "description": "Hardware issue affecting 2 units across 2 test occurrences",
+      "has_test_data": true,
+      "notes": "Impact: 2 units (0.1% of total)",
+      "model_chart_data": {
+        "labels": [
+          "P150a",
+          "P150b"
+        ],
+        "data": [
+          1,
+          1
+        ],
+        "total_count": 2
+      },
+      "asic_chart_data": {
+        "labels": [
+          "ASIC 1"
+        ],
+        "data": [
+          2
+        ],
+        "total_count": 2
+      },
+      "eth_chart_data": {
+        "labels": [],
+        "data": []
+      },
+      "controller_chart_data": {
+        "labels": [
+          "DDR Controller A"
+        ],
+        "data": [
+          2
+        ],
+        "total_count": 2
+      },
+      "asic_eth_heatmap": {
+        "row_labels": [],
+        "col_labels": [],
+        "matrix": [],
+        "max_value": 0
+      },
+      "asic_controller_heatmap": {
+        "row_labels": [
+          "ASIC 1"
+        ],
+        "col_labels": [
+          "DDR A"
+        ],
+        "matrix": [
+          [
+            2
+          ]
+        ],
+        "max_value": 2
+      },
+      "summary_insights": []
+    },
+    {
+      "jira_entry": "QUAN-146",
+      "issue_description": "PCIe PCIe speed/width check ailure",
+      "affected_units": 2,
+      "failure_counts": 2,
+      "failure_rate": "0.1%",
+      "description": "Hardware issue affecting 2 units across 2 test occurrences",
+      "has_test_data": true,
+      "notes": "Impact: 2 units (0.1% of total)",
+      "model_chart_data": {
+        "labels": [
+          "P150a",
+          "P150b"
+        ],
+        "data": [
+          1,
+          1
+        ],
+        "total_count": 2
+      },
+      "asic_chart_data": {
+        "labels": [
+          "ASIC 1"
+        ],
+        "data": [
+          2
+        ],
+        "total_count": 2
+      },
+      "eth_chart_data": {
+        "labels": [],
+        "data": []
+      },
+      "controller_chart_data": {
+        "labels": [],
+        "data": []
+      },
+      "asic_eth_heatmap": {
+        "row_labels": [],
+        "col_labels": [],
+        "matrix": [],
+        "max_value": 0
+      },
+      "asic_controller_heatmap": {
+        "row_labels": [],
+        "col_labels": [],
+        "matrix": [],
+        "max_value": 0
+      },
+      "summary_insights": []
+    },
+    {
+      "jira_entry": "QUAN-546",
+      "issue_description": "PCIe PCIe speed/width check hard failure",
+      "affected_units": 2,
+      "failure_counts": 2,
+      "failure_rate": "0.1%",
+      "description": "Hardware issue affecting 2 units across 2 test occurrences",
+      "has_test_data": true,
+      "notes": "Impact: 2 units (0.1% of total)",
+      "model_chart_data": {
+        "labels": [
+          "P100a",
+          "P150b"
+        ],
+        "data": [
+          1,
+          1
+        ],
+        "total_count": 2
+      },
+      "asic_chart_data": {
+        "labels": [
+          "ASIC 1"
+        ],
+        "data": [
+          2
+        ],
+        "total_count": 2
+      },
+      "eth_chart_data": {
+        "labels": [],
+        "data": []
+      },
+      "controller_chart_data": {
+        "labels": [],
+        "data": []
+      },
+      "asic_eth_heatmap": {
+        "row_labels": [],
+        "col_labels": [],
+        "matrix": [],
+        "max_value": 0
+      },
+      "asic_controller_heatmap": {
+        "row_labels": [],
+        "col_labels": [],
+        "matrix": [],
+        "max_value": 0
+      },
+      "summary_insights": []
+    }
+  ],
+  "yield_hitters_summary": {
+    "total_yield_hitters": 7,
+    "entries_with_test_data": 7,
+    "total_affected_units": 175,
+    "total_failure_counts": 193
+  },
+  "overall_distributions": {
+    "model_distribution": {
+      "P150b": 1367,
+      "P150a": 315,
+      "P150c": 150,
+      "P100a": 50
+    },
+    "model_status_distribution": {
+      "P150b": {
+        "total": 1367,
+        "passed": 1242,
+        "fixed": 106,
+        "failed": 19,
+        "yield_rate": 98.6100950987564
+      },
+      "P150a": {
+        "total": 315,
+        "passed": 288,
+        "fixed": 17,
+        "failed": 10,
+        "yield_rate": 96.82539682539682
+      },
+      "P150c": {
+        "total": 150,
+        "passed": 133,
+        "fixed": 11,
+        "failed": 6,
+        "yield_rate": 96.0
+      },
+      "P100a": {
+        "total": 50,
+        "passed": 48,
+        "fixed": 1,
+        "failed": 1,
+        "yield_rate": 98.0
+      }
+    },
+    "category_distribution": {
+      "Other": 193
+    },
+    "total_units": 1883,
+    "total_failures": 193
+  }
+};
+    </script>
+    <script src="app.js"></script>
+</body>
+</html>

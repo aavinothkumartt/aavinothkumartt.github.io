@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BH PCIe Cards Yield Dashboard</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <div class="dashboard-container">
+        <!-- Header Section - PERFECT with new title -->
+        <header class="dashboard-header">
+            <h1>BH PCIe Cards Dashboard</h1>
+            <p class="generation-time">Generated on: 2026-01-07 17:58:25 CST</p>
+        </header>
+
+        <!-- Main Dashboard Grid -->
+        <div class="dashboard-grid-adjusted">
+            <!-- Left Column - Yield Quality Analysis -->
+            <section class="dashboard-section yield-quality">
+                <div class="section-header">
+                    <h2>Yield Quality Analysis</h2>
+                </div>
+                <div class="section-content">
+                    <div class="kpi-cards-grid">
+                        <div class="kpi-card">
+                            <div class="kpi-value">93.8%</div>
+                            <div class="kpi-label">First Pass Yield</div>
+                            <div class="kpi-sublabel">165 units</div>
+                        </div>
+                        <div class="kpi-card">
+                            <div class="kpi-value">94.9%</div>
+                            <div class="kpi-label">Overall Yield</div>
+                            <div class="kpi-sublabel">167 units</div>
+                        </div>
+                        <div class="kpi-card">
+                            <div class="kpi-value">1.1%</div>
+                            <div class="kpi-label">Fixed Units</div>
+                            <div class="kpi-sublabel">2 units</div>
+                        </div>
+                        <div class="kpi-card">
+                            <div class="kpi-value">5.1%</div>
+                            <div class="kpi-label">Failed Units</div>
+                            <div class="kpi-sublabel">9 units</div>
+                        </div>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="statusChart"></canvas>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Right Column - Yield Hitters Analysis (Stacked) -->
+            <section class="dashboard-section yield-hitters">
+                <div class="section-header">
+                    <h2>Yield Hitters Analysis</h2>
+                    <p>Impact analysis separated by affected units (yield impact) vs failure counts (issue frequency)</p>
+                </div>
+                <div class="section-content">
+                    <div class="stacked-charts">
+                        <div class="chart-container">
+                            <canvas id="yieldHittersAffectedUnitsChart"></canvas>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="yieldHittersFailureCountsChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <!-- Full Width Sections -->
+        <div class="full-width-sections">
+            <!-- Issue Analysis by JIRA Entry -->
+            <section class="dashboard-section full-width">
+                <div class="section-header">
+                    <h2>Issue Analysis by JIRA Entry</h2>
+                    <p>Detailed component analysis with JIRA-specific charts and heat maps (all components supported)</p>
+                </div>
+                <div class="section-content">
+                    <div id="jiraAnalysisContainer" class="jira-analysis-container">
+                        <!-- JIRA analysis cards will be generated here by JavaScript -->
+                    </div>
+                </div>
+            </section>
+
+            <!-- Overall Distributions Summary -->
+            <section class="dashboard-section full-width">
+                <div class="section-header">
+                    <h2>Overall Distributions Summary</h2>
+                    <p>Complete analysis of all 176 tested units</p>
+                </div>
+                <div class="section-content">
+                    <div class="distribution-charts">
+                        <div class="chart-container">
+                            <canvas id="modelDistributionChart"></canvas>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="modelYieldChart"></canvas>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="categoryDistributionChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </div>
+
+    <!-- Data and Scripts -->
+    <script>
+        window.dashboardData = {
+  "yield_metrics": {
+    "total_units": 176,
+    "first_pass_yield": 165,
+    "all_passed_yield": 167,
+    "fixed_units": 2,
+    "failed_units": 9,
+    "first_pass_percentage": 93.8,
+    "overall_pass_percentage": 94.9,
+    "fixed_percentage": 1.1,
+    "failed_percentage": 5.1
+  },
+  "status_distribution": {
+    "Passed": 165,
+    "Fixed": 2,
+    "Failed": 9
+  },
+  "yield_hitters": [
+    {
+      "jira_entry": "QUAN-845",
+      "issue_description": "Error Code E34 | ETH_TRAIN_FAIL_ALL",
+      "affected_units": 8,
+      "failure_counts": 30,
+      "failure_rate": "4.5%",
+      "description": "Hardware issue affecting 8 units across 30 test occurrences",
+      "has_test_data": true,
+      "notes": "Impact: 8 units (4.5% of total)",
+      "model_chart_data": {
+        "labels": [
+          "P300c"
+        ],
+        "data": [
+          8
+        ],
+        "total_count": 8
+      },
+      "asic_chart_data": {
+        "labels": [
+          "ASIC 1",
+          "ASIC 2"
+        ],
+        "data": [
+          14,
+          16
+        ],
+        "total_count": 30
+      },
+      "eth_chart_data": {
+        "labels": [
+          "ETH Port 2",
+          "ETH Port 3",
+          "ETH Port 4",
+          "ETH Port 6",
+          "ETH Port 7",
+          "ETH Port 8",
+          "ETH Port 9",
+          "ETH Port 11"
+        ],
+        "data": [
+          4,
+          4,
+          5,
+          6,
+          3,
+          1,
+          5,
+          2
+        ],
+        "total_count": 30
+      },
+      "controller_chart_data": {
+        "labels": [],
+        "data": []
+      },
+      "asic_eth_heatmap": {
+        "row_labels": [
+          "ASIC 1",
+          "ASIC 2"
+        ],
+        "col_labels": [
+          "ETH 2",
+          "ETH 3",
+          "ETH 4",
+          "ETH 6",
+          "ETH 7",
+          "ETH 8",
+          "ETH 9",
+          "ETH 11"
+        ],
+        "matrix": [
+          [
+            4,
+            4,
+            3,
+            0,
+            3,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            2,
+            6,
+            0,
+            1,
+            5,
+            2
+          ]
+        ],
+        "max_value": 6
+      },
+      "asic_controller_heatmap": {
+        "row_labels": [],
+        "col_labels": [],
+        "matrix": [],
+        "max_value": 0
+      },
+      "summary_insights": [
+        {
+          "title": "QUAN-845 Moderate Impact",
+          "description": "Moderate impact affecting 8 units (4.5%)",
+          "severity": "medium"
+        }
+      ]
+    },
+    {
+      "jira_entry": "QUAN-857",
+      "issue_description": "Error Code ET | DDR_TRAIN_FAI",
+      "affected_units": 1,
+      "failure_counts": 1,
+      "failure_rate": "0.6%",
+      "description": "Hardware issue affecting 1 units across 1 test occurrences",
+      "has_test_data": true,
+      "notes": "Impact: 1 units (0.6% of total)",
+      "model_chart_data": {
+        "labels": [
+          "P300c"
+        ],
+        "data": [
+          1
+        ],
+        "total_count": 1
+      },
+      "asic_chart_data": {
+        "labels": [
+          "ASIC 1"
+        ],
+        "data": [
+          1
+        ],
+        "total_count": 1
+      },
+      "eth_chart_data": {
+        "labels": [],
+        "data": []
+      },
+      "controller_chart_data": {
+        "labels": [],
+        "data": []
+      },
+      "asic_eth_heatmap": {
+        "row_labels": [],
+        "col_labels": [],
+        "matrix": [],
+        "max_value": 0
+      },
+      "asic_controller_heatmap": {
+        "row_labels": [],
+        "col_labels": [],
+        "matrix": [],
+        "max_value": 0
+      },
+      "summary_insights": []
+    },
+    {
+      "jira_entry": "QUAN-459",
+      "issue_description": "Error Code EL | COMMUNICATION_FAIL",
+      "affected_units": 1,
+      "failure_counts": 2,
+      "failure_rate": "0.6%",
+      "description": "Hardware issue affecting 1 units across 2 test occurrences",
+      "has_test_data": true,
+      "notes": "Impact: 1 units (0.6% of total)",
+      "model_chart_data": {
+        "labels": [
+          "P300c"
+        ],
+        "data": [
+          1
+        ],
+        "total_count": 1
+      },
+      "asic_chart_data": {
+        "labels": [
+          "ASIC 1",
+          "ASIC 2"
+        ],
+        "data": [
+          1,
+          1
+        ],
+        "total_count": 2
+      },
+      "eth_chart_data": {
+        "labels": [],
+        "data": []
+      },
+      "controller_chart_data": {
+        "labels": [],
+        "data": []
+      },
+      "asic_eth_heatmap": {
+        "row_labels": [],
+        "col_labels": [],
+        "matrix": [],
+        "max_value": 0
+      },
+      "asic_controller_heatmap": {
+        "row_labels": [],
+        "col_labels": [],
+        "matrix": [],
+        "max_value": 0
+      },
+      "summary_insights": []
+    }
+  ],
+  "yield_hitters_summary": {
+    "total_yield_hitters": 3,
+    "entries_with_test_data": 3,
+    "total_affected_units": 10,
+    "total_failure_counts": 33
+  },
+  "overall_distributions": {
+    "model_distribution": {
+      "P300c": 175
+    },
+    "model_status_distribution": {
+      "P300c": {
+        "total": 175,
+        "passed": 165,
+        "fixed": 2,
+        "failed": 8,
+        "yield_rate": 95.42857142857143
+      }
+    },
+    "category_distribution": {
+      "Other": 33
+    },
+    "total_units": 176,
+    "total_failures": 33
+  }
+};
+    </script>
+    <script src="app.js"></script>
+</body>
+</html>

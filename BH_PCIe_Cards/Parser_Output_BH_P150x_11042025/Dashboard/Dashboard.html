@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BH PCIe Cards Yield Dashboard</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <div class="dashboard-container">
+        <!-- Header Section - PERFECT with new title -->
+        <header class="dashboard-header">
+            <h1>BH PCIe Cards Dashboard</h1>
+            <p class="generation-time">Generated on: 2026-01-07 19:11:21 CST</p>
+        </header>
+
+        <!-- Main Dashboard Grid -->
+        <div class="dashboard-grid-adjusted">
+            <!-- Left Column - Yield Quality Analysis -->
+            <section class="dashboard-section yield-quality">
+                <div class="section-header">
+                    <h2>Yield Quality Analysis</h2>
+                </div>
+                <div class="section-content">
+                    <div class="kpi-cards-grid">
+                        <div class="kpi-card">
+                            <div class="kpi-value">89.5%</div>
+                            <div class="kpi-label">First Pass Yield</div>
+                            <div class="kpi-sublabel">51 units</div>
+                        </div>
+                        <div class="kpi-card">
+                            <div class="kpi-value">94.7%</div>
+                            <div class="kpi-label">Overall Yield</div>
+                            <div class="kpi-sublabel">54 units</div>
+                        </div>
+                        <div class="kpi-card">
+                            <div class="kpi-value">5.3%</div>
+                            <div class="kpi-label">Fixed Units</div>
+                            <div class="kpi-sublabel">3 units</div>
+                        </div>
+                        <div class="kpi-card">
+                            <div class="kpi-value">5.3%</div>
+                            <div class="kpi-label">Failed Units</div>
+                            <div class="kpi-sublabel">3 units</div>
+                        </div>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="statusChart"></canvas>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Right Column - Yield Hitters Analysis (Stacked) -->
+            <section class="dashboard-section yield-hitters">
+                <div class="section-header">
+                    <h2>Yield Hitters Analysis</h2>
+                    <p>Impact analysis separated by affected units (yield impact) vs failure counts (issue frequency)</p>
+                </div>
+                <div class="section-content">
+                    <div class="stacked-charts">
+                        <div class="chart-container">
+                            <canvas id="yieldHittersAffectedUnitsChart"></canvas>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="yieldHittersFailureCountsChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <!-- Full Width Sections -->
+        <div class="full-width-sections">
+            <!-- Issue Analysis by JIRA Entry -->
+            <section class="dashboard-section full-width">
+                <div class="section-header">
+                    <h2>Issue Analysis by JIRA Entry</h2>
+                    <p>Detailed component analysis with JIRA-specific charts and heat maps (all components supported)</p>
+                </div>
+                <div class="section-content">
+                    <div id="jiraAnalysisContainer" class="jira-analysis-container">
+                        <!-- JIRA analysis cards will be generated here by JavaScript -->
+                    </div>
+                </div>
+            </section>
+
+            <!-- Overall Distributions Summary -->
+            <section class="dashboard-section full-width">
+                <div class="section-header">
+                    <h2>Overall Distributions Summary</h2>
+                    <p>Complete analysis of all 57 tested units</p>
+                </div>
+                <div class="section-content">
+                    <div class="distribution-charts">
+                        <div class="chart-container">
+                            <canvas id="modelDistributionChart"></canvas>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="modelYieldChart"></canvas>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="categoryDistributionChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </div>
+
+    <!-- Data and Scripts -->
+    <script>
+        window.dashboardData = {
+  "yield_metrics": {
+    "total_units": 57,
+    "first_pass_yield": 51,
+    "all_passed_yield": 54,
+    "fixed_units": 3,
+    "failed_units": 3,
+    "first_pass_percentage": 89.5,
+    "overall_pass_percentage": 94.7,
+    "fixed_percentage": 5.3,
+    "failed_percentage": 5.3
+  },
+  "status_distribution": {
+    "Passed": 51,
+    "Fixed": 3,
+    "Failed": 3
+  },
+  "yield_hitters": [
+    {
+      "jira_entry": "QUAN-757",
+      "issue_description": "Error Code E34 | ETH_TRAIN_FAIL_ALL",
+      "affected_units": 3,
+      "failure_counts": 5,
+      "failure_rate": "5.3%",
+      "description": "Hardware issue affecting 3 units across 5 test occurrences",
+      "has_test_data": true,
+      "notes": "Impact: 3 units (5.3% of total)",
+      "model_chart_data": {
+        "labels": [
+          "P150b"
+        ],
+        "data": [
+          3
+        ],
+        "total_count": 3
+      },
+      "asic_chart_data": {
+        "labels": [
+          "ASIC 1"
+        ],
+        "data": [
+          5
+        ],
+        "total_count": 5
+      },
+      "eth_chart_data": {
+        "labels": [
+          "ETH Port 4",
+          "ETH Port 7",
+          "ETH Port 10",
+          "ETH Port 12"
+        ],
+        "data": [
+          1,
+          1,
+          1,
+          2
+        ],
+        "total_count": 5
+      },
+      "controller_chart_data": {
+        "labels": [],
+        "data": []
+      },
+      "asic_eth_heatmap": {
+        "row_labels": [
+          "ASIC 1"
+        ],
+        "col_labels": [
+          "ETH 4",
+          "ETH 7",
+          "ETH 10",
+          "ETH 12"
+        ],
+        "matrix": [
+          [
+            1,
+            1,
+            1,
+            2
+          ]
+        ],
+        "max_value": 2
+      },
+      "asic_controller_heatmap": {
+        "row_labels": [],
+        "col_labels": [],
+        "matrix": [],
+        "max_value": 0
+      },
+      "summary_insights": []
+    },
+    {
+      "jira_entry": "NTF - E103",
+      "issue_description": "Error Code E103 | HIGH_TEMPERATUE",
+      "affected_units": 1,
+      "failure_counts": 1,
+      "failure_rate": "1.8%",
+      "description": "Hardware issue affecting 1 units across 1 test occurrences",
+      "has_test_data": true,
+      "notes": "Impact: 1 units (1.8% of total)",
+      "model_chart_data": {
+        "labels": [
+          "P150a"
+        ],
+        "data": [
+          1
+        ],
+        "total_count": 1
+      },
+      "asic_chart_data": {
+        "labels": [
+          "ASIC 1"
+        ],
+        "data": [
+          1
+        ],
+        "total_count": 1
+      },
+      "eth_chart_data": {
+        "labels": [],
+        "data": []
+      },
+      "controller_chart_data": {
+        "labels": [],
+        "data": []
+      },
+      "asic_eth_heatmap": {
+        "row_labels": [],
+        "col_labels": [],
+        "matrix": [],
+        "max_value": 0
+      },
+      "asic_controller_heatmap": {
+        "row_labels": [],
+        "col_labels": [],
+        "matrix": [],
+        "max_value": 0
+      },
+      "summary_insights": []
+    },
+    {
+      "jira_entry": "NTF - EFRDY",
+      "issue_description": "Error Code EFRDY | FW_NOT_READY",
+      "affected_units": 1,
+      "failure_counts": 1,
+      "failure_rate": "1.8%",
+      "description": "Hardware issue affecting 1 units across 1 test occurrences",
+      "has_test_data": true,
+      "notes": "Impact: 1 units (1.8% of total)",
+      "model_chart_data": {
+        "labels": [
+          "P150b"
+        ],
+        "data": [
+          1
+        ],
+        "total_count": 1
+      },
+      "asic_chart_data": {
+        "labels": [
+          "ASIC 1"
+        ],
+        "data": [
+          1
+        ],
+        "total_count": 1
+      },
+      "eth_chart_data": {
+        "labels": [],
+        "data": []
+      },
+      "controller_chart_data": {
+        "labels": [],
+        "data": []
+      },
+      "asic_eth_heatmap": {
+        "row_labels": [],
+        "col_labels": [],
+        "matrix": [],
+        "max_value": 0
+      },
+      "asic_controller_heatmap": {
+        "row_labels": [],
+        "col_labels": [],
+        "matrix": [],
+        "max_value": 0
+      },
+      "summary_insights": []
+    }
+  ],
+  "yield_hitters_summary": {
+    "total_yield_hitters": 3,
+    "entries_with_test_data": 3,
+    "total_affected_units": 5,
+    "total_failure_counts": 7
+  },
+  "overall_distributions": {
+    "model_distribution": {
+      "P150b": 42,
+      "P150a": 14
+    },
+    "model_status_distribution": {
+      "P150b": {
+        "total": 42,
+        "passed": 38,
+        "fixed": 2,
+        "failed": 2,
+        "yield_rate": 95.23809523809523
+      },
+      "P150a": {
+        "total": 14,
+        "passed": 13,
+        "fixed": 1,
+        "failed": 0,
+        "yield_rate": 100.0
+      }
+    },
+    "category_distribution": {
+      "Other": 7
+    },
+    "total_units": 57,
+    "total_failures": 7
+  }
+};
+    </script>
+    <script src="app.js"></script>
+</body>
+</html>

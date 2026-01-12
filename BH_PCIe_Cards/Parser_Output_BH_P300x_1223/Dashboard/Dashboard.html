@@ -1,0 +1,597 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BH PCIe Cards Yield Dashboard</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <div class="dashboard-container">
+        <!-- Header Section - PERFECT with new title -->
+        <header class="dashboard-header">
+            <h1>BH PCIe Cards Dashboard</h1>
+            <p class="generation-time">Generated on: 2026-01-07 17:56:46 CST</p>
+        </header>
+
+        <!-- Main Dashboard Grid -->
+        <div class="dashboard-grid-adjusted">
+            <!-- Left Column - Yield Quality Analysis -->
+            <section class="dashboard-section yield-quality">
+                <div class="section-header">
+                    <h2>Yield Quality Analysis</h2>
+                </div>
+                <div class="section-content">
+                    <div class="kpi-cards-grid">
+                        <div class="kpi-card">
+                            <div class="kpi-value">96.1%</div>
+                            <div class="kpi-label">First Pass Yield</div>
+                            <div class="kpi-sublabel">470 units</div>
+                        </div>
+                        <div class="kpi-card">
+                            <div class="kpi-value">99.2%</div>
+                            <div class="kpi-label">Overall Yield</div>
+                            <div class="kpi-sublabel">485 units</div>
+                        </div>
+                        <div class="kpi-card">
+                            <div class="kpi-value">3.1%</div>
+                            <div class="kpi-label">Fixed Units</div>
+                            <div class="kpi-sublabel">15 units</div>
+                        </div>
+                        <div class="kpi-card">
+                            <div class="kpi-value">0.8%</div>
+                            <div class="kpi-label">Failed Units</div>
+                            <div class="kpi-sublabel">4 units</div>
+                        </div>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="statusChart"></canvas>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Right Column - Yield Hitters Analysis (Stacked) -->
+            <section class="dashboard-section yield-hitters">
+                <div class="section-header">
+                    <h2>Yield Hitters Analysis</h2>
+                    <p>Impact analysis separated by affected units (yield impact) vs failure counts (issue frequency)</p>
+                </div>
+                <div class="section-content">
+                    <div class="stacked-charts">
+                        <div class="chart-container">
+                            <canvas id="yieldHittersAffectedUnitsChart"></canvas>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="yieldHittersFailureCountsChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <!-- Full Width Sections -->
+        <div class="full-width-sections">
+            <!-- Issue Analysis by JIRA Entry -->
+            <section class="dashboard-section full-width">
+                <div class="section-header">
+                    <h2>Issue Analysis by JIRA Entry</h2>
+                    <p>Detailed component analysis with JIRA-specific charts and heat maps (all components supported)</p>
+                </div>
+                <div class="section-content">
+                    <div id="jiraAnalysisContainer" class="jira-analysis-container">
+                        <!-- JIRA analysis cards will be generated here by JavaScript -->
+                    </div>
+                </div>
+            </section>
+
+            <!-- Overall Distributions Summary -->
+            <section class="dashboard-section full-width">
+                <div class="section-header">
+                    <h2>Overall Distributions Summary</h2>
+                    <p>Complete analysis of all 489 tested units</p>
+                </div>
+                <div class="section-content">
+                    <div class="distribution-charts">
+                        <div class="chart-container">
+                            <canvas id="modelDistributionChart"></canvas>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="modelYieldChart"></canvas>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="categoryDistributionChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </div>
+
+    <!-- Data and Scripts -->
+    <script>
+        window.dashboardData = {
+  "yield_metrics": {
+    "total_units": 489,
+    "first_pass_yield": 470,
+    "all_passed_yield": 485,
+    "fixed_units": 15,
+    "failed_units": 4,
+    "first_pass_percentage": 96.1,
+    "overall_pass_percentage": 99.2,
+    "fixed_percentage": 3.1,
+    "failed_percentage": 0.8
+  },
+  "status_distribution": {
+    "Passed": 470,
+    "Fixed": 15,
+    "Failed": 4
+  },
+  "yield_hitters": [
+    {
+      "jira_entry": "NTF - E103",
+      "issue_description": "Error Code E103 | HIGH_TEMPERATUE",
+      "affected_units": 9,
+      "failure_counts": 18,
+      "failure_rate": "1.8%",
+      "description": "Hardware issue affecting 9 units across 18 test occurrences",
+      "has_test_data": true,
+      "notes": "Impact: 9 units (1.8% of total)",
+      "model_chart_data": {
+        "labels": [
+          "P300c"
+        ],
+        "data": [
+          9
+        ],
+        "total_count": 9
+      },
+      "asic_chart_data": {
+        "labels": [
+          "ASIC 1",
+          "ASIC 2"
+        ],
+        "data": [
+          9,
+          9
+        ],
+        "total_count": 18
+      },
+      "eth_chart_data": {
+        "labels": [],
+        "data": []
+      },
+      "controller_chart_data": {
+        "labels": [],
+        "data": []
+      },
+      "asic_eth_heatmap": {
+        "row_labels": [],
+        "col_labels": [],
+        "matrix": [],
+        "max_value": 0
+      },
+      "asic_controller_heatmap": {
+        "row_labels": [],
+        "col_labels": [],
+        "matrix": [],
+        "max_value": 0
+      },
+      "summary_insights": [
+        {
+          "title": "NTF - E103 Moderate Impact",
+          "description": "Moderate impact affecting 9 units (1.8%)",
+          "severity": "medium"
+        }
+      ]
+    },
+    {
+      "jira_entry": "NTF - E12",
+      "issue_description": "Error Code E12 | I2C_FAIL",
+      "affected_units": 4,
+      "failure_counts": 6,
+      "failure_rate": "0.8%",
+      "description": "Hardware issue affecting 4 units across 6 test occurrences",
+      "has_test_data": true,
+      "notes": "Impact: 4 units (0.8% of total)",
+      "model_chart_data": {
+        "labels": [
+          "P300c"
+        ],
+        "data": [
+          4
+        ],
+        "total_count": 4
+      },
+      "asic_chart_data": {
+        "labels": [
+          "ASIC 1",
+          "ASIC 2"
+        ],
+        "data": [
+          2,
+          4
+        ],
+        "total_count": 6
+      },
+      "eth_chart_data": {
+        "labels": [],
+        "data": []
+      },
+      "controller_chart_data": {
+        "labels": [],
+        "data": []
+      },
+      "asic_eth_heatmap": {
+        "row_labels": [],
+        "col_labels": [],
+        "matrix": [],
+        "max_value": 0
+      },
+      "asic_controller_heatmap": {
+        "row_labels": [],
+        "col_labels": [],
+        "matrix": [],
+        "max_value": 0
+      },
+      "summary_insights": []
+    },
+    {
+      "jira_entry": "QUAN-459",
+      "issue_description": "Error Code EL | COMMUNICATION_FAIL",
+      "affected_units": 3,
+      "failure_counts": 6,
+      "failure_rate": "0.6%",
+      "description": "Hardware issue affecting 3 units across 6 test occurrences",
+      "has_test_data": true,
+      "notes": "Impact: 3 units (0.6% of total)",
+      "model_chart_data": {
+        "labels": [
+          "P300c"
+        ],
+        "data": [
+          3
+        ],
+        "total_count": 3
+      },
+      "asic_chart_data": {
+        "labels": [
+          "ASIC 1",
+          "ASIC 2"
+        ],
+        "data": [
+          3,
+          3
+        ],
+        "total_count": 6
+      },
+      "eth_chart_data": {
+        "labels": [],
+        "data": []
+      },
+      "controller_chart_data": {
+        "labels": [],
+        "data": []
+      },
+      "asic_eth_heatmap": {
+        "row_labels": [],
+        "col_labels": [],
+        "matrix": [],
+        "max_value": 0
+      },
+      "asic_controller_heatmap": {
+        "row_labels": [],
+        "col_labels": [],
+        "matrix": [],
+        "max_value": 0
+      },
+      "summary_insights": []
+    },
+    {
+      "jira_entry": "QUAN-845",
+      "issue_description": "Error Code E34 | ETH_TRAIN_FAIL_ALL",
+      "affected_units": 2,
+      "failure_counts": 4,
+      "failure_rate": "0.4%",
+      "description": "Hardware issue affecting 2 units across 4 test occurrences",
+      "has_test_data": true,
+      "notes": "Impact: 2 units (0.4% of total)",
+      "model_chart_data": {
+        "labels": [
+          "P300c"
+        ],
+        "data": [
+          2
+        ],
+        "total_count": 2
+      },
+      "asic_chart_data": {
+        "labels": [
+          "ASIC 1"
+        ],
+        "data": [
+          4
+        ],
+        "total_count": 4
+      },
+      "eth_chart_data": {
+        "labels": [
+          "ETH Port 2",
+          "ETH Port 3"
+        ],
+        "data": [
+          2,
+          2
+        ],
+        "total_count": 4
+      },
+      "controller_chart_data": {
+        "labels": [],
+        "data": []
+      },
+      "asic_eth_heatmap": {
+        "row_labels": [
+          "ASIC 1"
+        ],
+        "col_labels": [
+          "ETH 2",
+          "ETH 3"
+        ],
+        "matrix": [
+          [
+            2,
+            2
+          ]
+        ],
+        "max_value": 2
+      },
+      "asic_controller_heatmap": {
+        "row_labels": [],
+        "col_labels": [],
+        "matrix": [],
+        "max_value": 0
+      },
+      "summary_insights": []
+    },
+    {
+      "jira_entry": "QUAN-1001",
+      "issue_description": "Error Code EC | DDR_TEST_FAIL",
+      "affected_units": 2,
+      "failure_counts": 2,
+      "failure_rate": "0.4%",
+      "description": "Hardware issue affecting 2 units across 2 test occurrences",
+      "has_test_data": true,
+      "notes": "Impact: 2 units (0.4% of total)",
+      "model_chart_data": {
+        "labels": [
+          "P300c"
+        ],
+        "data": [
+          2
+        ],
+        "total_count": 2
+      },
+      "asic_chart_data": {
+        "labels": [
+          "ASIC 1"
+        ],
+        "data": [
+          2
+        ],
+        "total_count": 2
+      },
+      "eth_chart_data": {
+        "labels": [],
+        "data": []
+      },
+      "controller_chart_data": {
+        "labels": [
+          "DDR Controller E"
+        ],
+        "data": [
+          2
+        ],
+        "total_count": 2
+      },
+      "asic_eth_heatmap": {
+        "row_labels": [],
+        "col_labels": [],
+        "matrix": [],
+        "max_value": 0
+      },
+      "asic_controller_heatmap": {
+        "row_labels": [
+          "ASIC 1"
+        ],
+        "col_labels": [
+          "DDR E"
+        ],
+        "matrix": [
+          [
+            2
+          ]
+        ],
+        "max_value": 2
+      },
+      "summary_insights": []
+    },
+    {
+      "jira_entry": "NTF - E04",
+      "issue_description": "Error Code E12 | PCIE_SPEED_WIDTH_FAIL",
+      "affected_units": 2,
+      "failure_counts": 2,
+      "failure_rate": "0.4%",
+      "description": "Hardware issue affecting 2 units across 2 test occurrences",
+      "has_test_data": true,
+      "notes": "Impact: 2 units (0.4% of total)",
+      "model_chart_data": {
+        "labels": [
+          "P300c"
+        ],
+        "data": [
+          2
+        ],
+        "total_count": 2
+      },
+      "asic_chart_data": {
+        "labels": [
+          "ASIC 1"
+        ],
+        "data": [
+          2
+        ],
+        "total_count": 2
+      },
+      "eth_chart_data": {
+        "labels": [],
+        "data": []
+      },
+      "controller_chart_data": {
+        "labels": [],
+        "data": []
+      },
+      "asic_eth_heatmap": {
+        "row_labels": [],
+        "col_labels": [],
+        "matrix": [],
+        "max_value": 0
+      },
+      "asic_controller_heatmap": {
+        "row_labels": [],
+        "col_labels": [],
+        "matrix": [],
+        "max_value": 0
+      },
+      "summary_insights": []
+    },
+    {
+      "jira_entry": "QUAN-857",
+      "issue_description": "Error Code ET | DDR_TRAIN_FAI",
+      "affected_units": 1,
+      "failure_counts": 1,
+      "failure_rate": "0.2%",
+      "description": "Hardware issue affecting 1 units across 1 test occurrences",
+      "has_test_data": true,
+      "notes": "Impact: 1 units (0.2% of total)",
+      "model_chart_data": {
+        "labels": [
+          "P300c"
+        ],
+        "data": [
+          1
+        ],
+        "total_count": 1
+      },
+      "asic_chart_data": {
+        "labels": [
+          "ASIC 2"
+        ],
+        "data": [
+          1
+        ],
+        "total_count": 1
+      },
+      "eth_chart_data": {
+        "labels": [],
+        "data": []
+      },
+      "controller_chart_data": {
+        "labels": [],
+        "data": []
+      },
+      "asic_eth_heatmap": {
+        "row_labels": [],
+        "col_labels": [],
+        "matrix": [],
+        "max_value": 0
+      },
+      "asic_controller_heatmap": {
+        "row_labels": [],
+        "col_labels": [],
+        "matrix": [],
+        "max_value": 0
+      },
+      "summary_insights": []
+    },
+    {
+      "jira_entry": "NTF - EFCMT",
+      "issue_description": "Error Code EFCMT | FW_COMMIT_FAIL",
+      "affected_units": 1,
+      "failure_counts": 2,
+      "failure_rate": "0.2%",
+      "description": "Hardware issue affecting 1 units across 2 test occurrences",
+      "has_test_data": true,
+      "notes": "Impact: 1 units (0.2% of total)",
+      "model_chart_data": {
+        "labels": [
+          "P300c"
+        ],
+        "data": [
+          1
+        ],
+        "total_count": 1
+      },
+      "asic_chart_data": {
+        "labels": [
+          "ASIC 1",
+          "ASIC 2"
+        ],
+        "data": [
+          1,
+          1
+        ],
+        "total_count": 2
+      },
+      "eth_chart_data": {
+        "labels": [],
+        "data": []
+      },
+      "controller_chart_data": {
+        "labels": [],
+        "data": []
+      },
+      "asic_eth_heatmap": {
+        "row_labels": [],
+        "col_labels": [],
+        "matrix": [],
+        "max_value": 0
+      },
+      "asic_controller_heatmap": {
+        "row_labels": [],
+        "col_labels": [],
+        "matrix": [],
+        "max_value": 0
+      },
+      "summary_insights": []
+    }
+  ],
+  "yield_hitters_summary": {
+    "total_yield_hitters": 8,
+    "entries_with_test_data": 8,
+    "total_affected_units": 24,
+    "total_failure_counts": 41
+  },
+  "overall_distributions": {
+    "model_distribution": {
+      "P300c": 488
+    },
+    "model_status_distribution": {
+      "P300c": {
+        "total": 488,
+        "passed": 470,
+        "fixed": 15,
+        "failed": 3,
+        "yield_rate": 99.38524590163934
+      }
+    },
+    "category_distribution": {
+      "Other": 41
+    },
+    "total_units": 489,
+    "total_failures": 41
+  }
+};
+    </script>
+    <script src="app.js"></script>
+</body>
+</html>
