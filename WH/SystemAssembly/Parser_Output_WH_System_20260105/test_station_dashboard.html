@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Test Station Dashboard v6.3</title>
+    <style>
+        :root { --primary: #1e3a5f; --accent: #0066cc; --bg: #f8fafc; --surface: #ffffff; --text: #0f172a; --text-secondary: #475569; --border: #e2e8f0; --border-light: #f1f5f9; }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); padding: 29px; }
+        .container { max-width: 1400px; margin: 0 auto; }
+        h1 { font-size: 29px; font-weight: 700; margin-bottom: 5px; }
+        h2 { font-size: 21px; font-weight: 700; margin-bottom: 19px; }
+        .controls { display: flex; gap: 10px; margin-bottom: 29px; flex-wrap: wrap; }
+        .btn { padding: 10px 16px; border: 1px solid var(--border); border-radius: 6px; background: var(--surface); cursor: pointer; font-size: 16px; font-weight: 500; color: var(--text-secondary); transition: all 150ms ease; }
+        .btn:hover { border-color: var(--accent); color: var(--accent); background: #f0f4ff; }
+        .btn.active { background: var(--primary); color: white; border-color: var(--primary); }
+        
+        .kpi-header { font-size: 16px; font-weight: 700; color: #1e3a5f; margin-bottom: 10px; margin-top: 20px; text-transform:uppercase; letter-spacing:0.5px; border-bottom: 2px solid #e2e8f0; padding-bottom: 5px; display:inline-block; }
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px; margin-bottom: 10px; }
+        
+        .stat-card { background: var(--surface); padding: 19px; border-radius: 7px; border: 1px solid var(--border); transition: transform 0.1s; display:flex; flex-direction:column; justify-content:space-between; position:relative; }
+        .stat-card[onclick]:hover { transform: translateY(-2px); box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); border-color: var(--accent); cursor:pointer; }
+        .stat-label { font-size: 13px; color: var(--text-secondary); text-transform: uppercase; margin-bottom: 10px; font-weight: 600; letter-spacing: 0.5px; }
+        .stat-value { font-size: 26px; font-weight: 700; color: var(--primary); }
+        .stat-sub { font-size: 12px; color: #94a3b8; margin-top: 4px; font-weight: 500; }
+        
+        .info-icon { position: absolute; top: 10px; right: 10px; opacity: 0; transition: opacity 0.2s; color: var(--accent); font-size: 14px; }
+        .stat-card:hover .info-icon { opacity: 1; }
+
+        .view { background: var(--surface); padding: 24px; border-radius: 7px; border: 1px solid var(--border); display: none; }
+        .view.active { display: block; }
+        .station-section { margin: 19px 0; padding: 19px; background: var(--bg); border-radius: 7px; border: 1px solid var(--border); }
+        .timeline-row { display: flex; flex-wrap: nowrap; align-items: center; gap: 0; overflow-x: auto; padding-bottom: 10px; }
+        .sys { padding: 14px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); margin: 0; flex-shrink: 0; }
+        .label { font-weight: 600; color: var(--primary); margin-bottom: 5px; font-size: 15px; }
+        .timestamps { font-size: 13px; color: var(--text-secondary); margin-bottom: 10px; }
+        .track { display: flex; height: 72px; background: white; border: 1px solid var(--border); border-radius: 5px; overflow: hidden; }
+        .seg { flex: 1; cursor: pointer; border-right: 1px solid rgba(255,255,255,0.1); display: flex; align-items: center; justify-content: center; position: relative; }
+        .seg-label { font-size: 12px; color: white; font-weight: 600; text-align: center; padding: 4px; }
+        .seg.idle { background: linear-gradient(135deg, #cbd5e1, #94a3b8); }
+        .seg.event.pass { background: linear-gradient(135deg, #059669, #047857); }
+        .seg.event.fail { background: linear-gradient(135deg, #dc2626, #b91c1c); }
+        .seg.event.fail.clickable:hover { filter: brightness(0.9); }
+        .gap-card { background: linear-gradient(135deg, rgba(100,150,255,0.08), rgba(150,180,255,0.08)); border: 1px solid rgba(100,150,255,0.25); border-radius: 5px; padding: 8px 10px; font-size: 12px; color: var(--text-secondary); margin: 0; flex-shrink: 0; line-height: 1.2; text-align: center; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 4px; min-width: 90px; max-width: 110px; }
+        .gap-card strong { color: #0066cc; font-weight: 700; font-size: 16px; line-height: 1; }
+        .gap-card.after-hours { background: linear-gradient(135deg, rgba(138,99,77,0.1), rgba(168,108,78,0.1)); border: 1px solid rgba(138,99,77,0.3); }
+        .gap-card.after-hours strong { color: #8A6344; }
+        .legend { display: flex; gap: 19px; margin-top: 21px; flex-wrap: wrap; font-size: 14px; }
+        .legend-item { display: flex; align-items: center; gap: 7px; }
+        .legend-box { width: 16px; height: 16px; border-radius: 4px; }
+        .detailed-table-wrapper { overflow-x: auto; }
+        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center; }
+        .modal-overlay.active { display: flex; }
+        .modal-box { background: white; border-radius: 8px; padding: 24px; max-width: 600px; width: 90%; max-height: 80vh; overflow-y: auto; box-shadow: 0 10px 40px rgba(0,0,0,0.3); }
+        .modal-header { font-size: 20px; font-weight: 700; color: #1e3a5f; margin-bottom: 16px; border-bottom: 2px solid #e2e8f0; padding-bottom: 12px; }
+        .modal-section { margin-bottom: 20px; }
+        .modal-label { font-size: 13px; font-weight: 600; color: #475569; text-transform: uppercase; margin-bottom: 8px; }
+        .modal-content { white-space: pre-wrap; word-break: break-word; line-height: 1.6; color: #0f172a; padding: 12px; background: #f8fafc; border-radius: 6px; border-left: 3px solid #0066cc; }
+        .modal-close { float: right; font-size: 24px; font-weight: bold; color: #aaa; cursor: pointer; line-height: 1; }
+        .kpi-def-block { margin-bottom: 15px; border-left: 3px solid #0066cc; padding-left: 15px; }
+        .kpi-def-title { font-weight: 700; color: #1e3a5f; margin-bottom: 5px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Test Station Dashboard</h1>
+        <div class="controls">
+            <button class="btn active" onclick="switchTab('timeline', this)">Timeline View</button>
+            <button class="btn" onclick="switchTab('replacements', this)">Component Replacement Summary</button>
+            <button class="btn" onclick="switchTab('detailed', this)">Detailed</button>
+            <button class="btn" onclick="switchTab('stats', this)">Stats</button>
+        </div>
+        
+        <div id="timeline" class="view active">
+            
+            <div class="kpi-header">Production KPIs</div>
+            <div class="stats-grid">
+                <div class="stat-card" onclick="showKpiInfo('throughput')">
+                    <div class="info-icon">ℹ️</div>
+                    <div class="stat-label">Throughput (Weekly)</div>
+                    <div class="stat-value">41.9</div>
+                    <div class="stat-sub">Units per week</div>
+                </div>
+                <div class="stat-card" onclick="showKpiInfo('fpy_runtime')">
+                    <div class="info-icon">ℹ️</div>
+                    <div class="stat-label">Avg Assembly Runtime (FPY)</div>
+                    <div class="stat-value">5h 35m</div>
+                    <div class="stat-sub">Shift Time (First-Pass Units)</div>
+                </div>
+                <div class="stat-card" onclick="showKpiInfo('downtime')">
+                    <div class="info-icon">ℹ️</div>
+                    <div class="stat-label">Avg Downtime / Failure</div>
+                    <div class="stat-value">2h 6m</div>
+                    <div class="stat-sub">Shift-based idle after fail</div>
+                </div>
+                <div class="stat-card" onclick="showKpiInfo('net')">
+                    <div class="info-icon">ℹ️</div>
+                    <div class="stat-label">Avg Test Runtime</div>
+                    <div class="stat-value" style="color:#0284c7;">3h 34m</div>
+                    <div class="stat-sub">Strictly testing time (No Gaps)</div>
+                </div>
+                <div class="stat-card" onclick="showKpiInfo('gross')">
+                    <div class="info-icon">ℹ️</div>
+                    <div class="stat-label">Avg Assembly Runtime (APY)</div>
+                    <div class="stat-value" style="color:#64748b;">6h 17m</div>
+                    <div class="stat-sub">Testing + Idle (Within Shift)</div>
+                </div>
+            </div>
+
+            <div class="kpi-header">Overall Yield Summary</div>
+            <div class="stats-grid">
+                <div class="stat-card">
+                   <div class="stat-label">Total Units</div>
+                   <div class="stat-value">10</div>
+                </div>
+                <div class="stat-card"><div class="stat-label">FPY (First-Pass)</div><div class="stat-value" style="color: #059669;">83.3%</div></div>
+                <div class="stat-card"><div class="stat-label">APY (All-Pass)</div><div class="stat-value" style="color: #10b981;">60.0%</div></div>
+                
+                <div class="stat-card" style="cursor: pointer;" onclick="showSystemList('First-Pass Systems', 'first_pass')">
+                    <div class="stat-label">First-Pass</div>
+                    <div class="stat-value" style="color: #059669;">5</div>
+                </div>
+                <div class="stat-card" style="cursor: pointer;" onclick="showSystemList('Recovered Systems', 'pass')">
+                    <div class="stat-label">Recovered</div>
+                    <div class="stat-value" style="color: #10b981;">1</div>
+                </div>
+                <div class="stat-card" style="cursor: pointer;" onclick="showSystemList('WIP Systems', 'wip')">
+                    <div class="stat-label">WIP</div>
+                    <div class="stat-value" style="color: #f59e0b;">4</div>
+                </div>
+                
+            </div>
+            
+            <h2 style="margin-top: 32px; margin-bottom: 10px;">System Timeline</h2>
+            <p style="color: #666; font-size: 14px; margin-bottom: 19px;">💡 Scroll right. <strong>Click blocks</strong> for details.</p>
+            
+			<div class="station-section">
+				<h3 style="color: #1e3a5f; margin: 0 0 6px 0; font-size: 18px; font-weight: 600;">Test Station 2A125</h3>
+				<p style="color: #475569; margin: 0 0 18px 0; font-size: 14px;">Record of 2 systems (1 FP, 1 P)</p>
+				<div class="timeline-row"><div class="sys" data-system="DR14G-139" data-start="2026-01-05 13:58" data-finish="2026-01-05 18:11"><div class="label">DR14G-139</div><div class="timestamps info-verbose">Start: 2026-01-05 13:58 Finish: 2026-01-05 18:11</div><div class="track"><div class="seg event pass" style="width: 5.533596837944664%; position: relative;" title="2026-01-05 13:58:28 (Work: 14m)" ><span class="seg-label">PRETEST 14m</span></div><div class="seg idle" style="width: 6.324110671936759%; min-width: 10px;" title="2026-01-05 14:29:08 (Work: 30m)"><span class="seg-label">16m</span></div><div class="seg event pass" style="width: 11.857707509881422%; position: relative;" title="2026-01-05 14:29:08 (Work: 30m)" ><span class="seg-label">FAT 30m</span></div><div class="seg idle" style="width: 5.533596837944664%; min-width: 10px;" title="2026-01-05 15:13:12 (Work: 2h 22m)"><span class="seg-label">14m</span></div><div class="seg event pass" style="width: 56.126482213438734%; position: relative;" title="2026-01-05 15:13:12 (Work: 2h 22m)" ><span class="seg-label">FRO 2h 22m</span></div><div class="seg idle" style="width: 5.533596837944664%; min-width: 10px;" title="2026-01-05 17:49:36 (Work: 23m)"><span class="seg-label">14m</span></div><div class="seg event pass" style="width: 9.090909090909092%; position: relative;" title="2026-01-05 17:49:36 (Work: 23m)" ><span class="seg-label">FFT 23m</span></div></div><div class="info info-verbose">Total: 4h 13m (Test Runtime: 3h 29m)</div></div><div class="sys" data-system="DR14G-144" data-start="2026-01-05 20:06" data-finish="2026-01-06 17:40"><div class="label">DR14G-144</div><div class="timestamps info-verbose">Start: 2026-01-05 20:06 Finish: 2026-01-06 17:40</div><div class="track"><div class="seg event fail clickable" style="width: 0.7727975270479135%; position: relative;" title="2026-01-05 20:06:45 (Work: 0m)" onclick="showFailureDetail('FAT', 'MjAyNi0wMS0wNSAyMDoxNjozOCw0MjIgLSBFUlJPUiAtIFtBUkNfQk1DX1NEQ0FSRF9DSEVDS11bRkFJTEBdIFRoZSByZXN1bHQgb2Ygc2RjYXJkIGNoZWNrIHRlc3Q6IEZBSUwsIGVyciBtc2c6IG5vIHNkY2FyZCBkZXRlY3QKLT4gW0NIRUNLUE9JTlQgRkFJTF0gQk1DLCBBUkMgQk1DIFNEQ0FSRCBDSEVDSyBbYXJjX2JtY19zZGNhcmRfY2hlY2td', '')"><span class="seg-label">FAT 10m</span></div><div class="seg idle" style="width: 63.29211746522411%; min-width: 10px;" title="2026-01-06 09:56:10 (Work: 18m)"><span class="seg-label">13h 39m</span></div><div class="seg event fail clickable" style="width: 1.3910355486862442%; position: relative;" title="2026-01-06 09:56:10 (Work: 18m)" onclick="showFailureDetail('FAT', 'MjAyNi0wMS0wNiAxMDoxMzozOSw3NDMgLSBFUlJPUiAtIFtGVF9FVEhfU1RSRVNTXVtGQUlMQF0gRlRfRVRIX1NUUkVTUyB0ZXN0IE5PVCBQYXNzIQotPiBbQ0hFQ0tQT0lOVCBGQUlMXSBHUFUsIFRUIFVCQiBGVU5DIEVUSCBTVFJFU1MgVEVTVCBbdHRfZnRfdWJiX2V0aF9zdHJlc3NfdGVzdF0=', '')"><span class="seg-label">FAT 18m</span></div><div class="seg idle" style="width: 13.987635239567235%; min-width: 10px;" title="2026-01-06 13:15:46 (Work: 31m)"><span class="seg-label">3h 1m</span></div><div class="seg event pass" style="width: 2.3956723338485317%; position: relative;" title="2026-01-06 13:15:46 (Work: 31m)" ><span class="seg-label">FAT 31m</span></div><div class="seg idle" style="width: 2.5502318392581143%; min-width: 10px;" title="2026-01-06 14:20:39 (Work: 2h 29m)"><span class="seg-label">33m</span></div><div class="seg event pass" style="width: 11.51468315301391%; position: relative;" title="2026-01-06 14:20:39 (Work: 2h 29m)" ><span class="seg-label">FRO 2h 29m</span></div><div class="seg idle" style="width: 1.0046367851622875%; min-width: 10px;" title="2026-01-06 17:03:08 (Work: 40m)"><span class="seg-label">13m</span></div><div class="seg event pass" style="width: 3.091190108191654%; position: relative;" title="2026-01-06 17:03:08 (Work: 40m)" ><span class="seg-label">FFT 40m</span></div></div><div class="info info-verbose">Total: 21h 34m (Test Runtime: 3h 58m)</div></div>
+				</div>
+			</div>
+			<div class="station-section">
+				<h3 style="color: #1e3a5f; margin: 0 0 6px 0; font-size: 18px; font-weight: 600;">Test Station 2A126</h3>
+				<p style="color: #475569; margin: 0 0 18px 0; font-size: 14px;">Record of 2 systems (1 FP, 1 WIP)</p>
+				<div class="timeline-row"><div class="sys" data-system="DR14G-136" data-start="2026-01-05 11:53" data-finish="2026-01-05 17:40"><div class="label">DR14G-136</div><div class="timestamps info-verbose">Start: 2026-01-05 11:53 Finish: 2026-01-05 17:40</div><div class="track"><div class="seg event pass" style="width: 4.034582132564841%; position: relative;" title="2026-01-05 11:53:21 (Work: 14m)" ><span class="seg-label">PRETEST 14m</span></div><div class="seg idle" style="width: 9.798270893371757%; min-width: 10px;" title="2026-01-05 12:41:41 (Work: 31m)"><span class="seg-label">34m</span></div><div class="seg event pass" style="width: 8.93371757925072%; position: relative;" title="2026-01-05 12:41:41 (Work: 31m)" ><span class="seg-label">FAT 31m</span></div><div class="seg idle" style="width: 7.780979827089338%; min-width: 10px;" title="2026-01-05 13:39:55 (Work: 2h 25m)"><span class="seg-label">27m</span></div><div class="seg event pass" style="width: 41.78674351585015%; position: relative;" title="2026-01-05 13:39:55 (Work: 2h 25m)" ><span class="seg-label">FRO 2h 25m</span></div><div class="seg idle" style="width: 3.7463976945244957%; min-width: 10px;" title="2026-01-05 16:18:41 (Work: 1h 23m)"><span class="seg-label">13m</span></div><div class="seg event pass" style="width: 23.919308357348704%; position: relative;" title="2026-01-05 16:18:41 (Work: 1h 23m)" ><span class="seg-label">FFT 1h 23m</span></div></div><div class="info info-verbose">Total: 5h 47m (Test Runtime: 4h 33m)</div></div><div class="sys" data-system="DR14G-142" data-start="2026-01-05 18:26" data-finish="2026-01-05 18:40"><div class="label">DR14G-142</div><div class="timestamps info-verbose">Start: 2026-01-05 18:26 Finish: 2026-01-05 18:40</div><div class="track"><div class="seg event pass" style="width: 100.0%; position: relative;" title="2026-01-05 18:26:02 (Work: 14m)" ><span class="seg-label">PRETEST 14m</span></div></div><div class="info info-verbose">Total: 14m (Test Runtime: 14m)</div></div>
+				</div>
+			</div>
+			<div class="station-section">
+				<h3 style="color: #1e3a5f; margin: 0 0 6px 0; font-size: 18px; font-weight: 600;">Test Station 2A226</h3>
+				<p style="color: #475569; margin: 0 0 18px 0; font-size: 14px;">Record of 2 systems (1 FP, 1 WIP)</p>
+				<div class="timeline-row"><div class="sys" data-system="DR14G-137" data-start="2026-01-05 13:38" data-finish="2026-01-05 17:39"><div class="label">DR14G-137</div><div class="timestamps info-verbose">Start: 2026-01-05 13:38 Finish: 2026-01-05 17:39</div><div class="track"><div class="seg event pass" style="width: 12.448132780082988%; position: relative;" title="2026-01-05 13:38:44 (Work: 30m)" ><span class="seg-label">FAT 30m</span></div><div class="seg idle" style="width: 5.809128630705394%; min-width: 10px;" title="2026-01-05 14:22:52 (Work: 2h 23m)"><span class="seg-label">14m</span></div><div class="seg event pass" style="width: 59.33609958506224%; position: relative;" title="2026-01-05 14:22:52 (Work: 2h 23m)" ><span class="seg-label">FRO 2h 23m</span></div><div class="seg idle" style="width: 14.107883817427386%; min-width: 10px;" title="2026-01-05 17:20:11 (Work: 20m)"><span class="seg-label">34m</span></div><div class="seg event pass" style="width: 8.29875518672199%; position: relative;" title="2026-01-05 17:20:11 (Work: 20m)" ><span class="seg-label">FFT 20m</span></div></div><div class="info info-verbose">Total: 4h 1m (Test Runtime: 3h 13m)</div></div><div class="sys" data-system="DR14G-143" data-start="2026-01-05 18:32" data-finish="2026-01-06 17:16"><div class="label">DR14G-143</div><div class="timestamps info-verbose">Start: 2026-01-05 18:32 Finish: 2026-01-06 17:16</div><div class="track"><div class="seg event fail clickable" style="width: 0.8064516129032258%; position: relative;" title="2026-01-05 18:32:00 (Work: 11m)" onclick="showFailureDetail('PRETEST', 'LT4gW0NIRUNLUE9JTlQgRkFJTF0gR1BVLCBBUkMgQVNJQyBGSVJNV0FSRSBVUERBVEUgW2FyY19hc2ljX2Z3X3VwZGF0ZV0=', 'UmVwbGFjZWQ6IFBDSWUgTGlua2luZyBCb2FyZApTN1RSQjNBM0EyNTEwMzEwODAgLT4gUzdUUkIzQTNBMjUxMDMxMDY5')"><span class="seg-label">PRETEST 11m</span><div style="position:absolute; top:-6px; right:-6px; background:#fbbf24; color:black; font-size:9px; width:12px; height:12px; border-radius:50%; text-align:center; line-height:12px; border:1px solid white;">R</div></div><div class="seg idle" style="width: 61.21700879765396%; min-width: 10px;" title="2026-01-06 08:38:34 (Work: 5m)"><span class="seg-label">13h 55m</span></div><div class="seg event pass" style="width: 0.36656891495601174%; position: relative;" title="2026-01-06 08:38:34 (Work: 5m)" ><span class="seg-label">PRETEST 5m</span></div><div class="seg idle" style="width: 1.1730205278592376%; min-width: 10px;" title="2026-01-06 09:00:00 (Work: 30m)"><span class="seg-label">16m</span></div><div class="seg event pass" style="width: 2.1994134897360706%; position: relative;" title="2026-01-06 09:00:00 (Work: 30m)" ><span class="seg-label">FAT 30m</span></div><div class="seg idle" style="width: 0.9530791788856305%; min-width: 10px;" title="2026-01-06 09:43:52 (Work: 1h 21m)"><span class="seg-label">13m</span></div><div class="seg event fail clickable" style="width: 5.93841642228739%; position: relative;" title="2026-01-06 09:43:52 (Work: 1h 21m)" onclick="showFailureDetail('FRO', 'MjAyNi0wMS0wNiAxMTowNTowNCw5MDUgLSBFUlJPUiAtIFtGVF9CVVJOSU5dW0ZBSUxAXSBGVF9CVVJOSU4gdGVzdCBOT1QgUGFzcyEKLT4gW0NIRUNLUE9JTlQgRkFJTF0gR1BVLCBUVCBVQkIgRlVOQyBCVVJOSU4gVEVTVCBbdHRfZnRfdWJiX3Rlc3RfYnVybmluXQ==', 'UmVwbGFjZWQ6IEJBU0VCT0FSRCxTN1QgVUJCLTMKVDM4UzdUQkEwMDkwNTQ4MDAwQiAtPiBUMzhTN1RCQTAwOTA1NDgwMDIx')"><span class="seg-label">FRO 1h 21m</span><div style="position:absolute; top:-6px; right:-6px; background:#fbbf24; color:black; font-size:9px; width:12px; height:12px; border-radius:50%; text-align:center; line-height:12px; border:1px solid white;">R</div></div><div class="seg idle" style="width: 9.750733137829911%; min-width: 10px;" title="2026-01-06 13:17:53 (Work: 4m)"><span class="seg-label">2h 13m</span></div><div class="seg event pass" style="width: 0.2932551319648094%; position: relative;" title="2026-01-06 13:17:53 (Work: 4m)" ><span class="seg-label">PRETEST 4m</span></div><div class="seg idle" style="width: 1.2463343108504399%; min-width: 10px;" title="2026-01-06 13:38:55 (Work: 30m)"><span class="seg-label">17m</span></div><div class="seg event pass" style="width: 2.1994134897360706%; position: relative;" title="2026-01-06 13:38:55 (Work: 30m)" ><span class="seg-label">FAT 30m</span></div><div class="seg idle" style="width: 3.44574780058651%; min-width: 10px;" title="2026-01-06 14:56:38 (Work: 2h 22m)"><span class="seg-label">47m</span></div><div class="seg event pass" style="width: 10.410557184750733%; position: relative;" title="2026-01-06 14:56:38 (Work: 2h 22m)" ><span class="seg-label">FRO 2h 22m</span></div></div><div class="info info-verbose">Total: 22h 44m (Test Runtime: 5h 3m)</div></div>
+				</div>
+			</div>
+			<div class="station-section">
+				<h3 style="color: #1e3a5f; margin: 0 0 6px 0; font-size: 18px; font-weight: 600;">Test Station 2A324</h3>
+				<p style="color: #475569; margin: 0 0 18px 0; font-size: 14px;">Record of 1 systems (1 WIP)</p>
+				<div class="timeline-row"><div class="sys" data-system="DR14G-146" data-start="2026-01-06 16:13" data-finish="2026-01-06 16:26"><div class="label">DR14G-146</div><div class="timestamps info-verbose">Start: 2026-01-06 16:13 Finish: 2026-01-06 16:26</div><div class="track"><div class="seg event pass" style="width: 100.0%; position: relative;" title="2026-01-06 16:13:50 (Work: 13m)" ><span class="seg-label">PRETEST 13m</span></div></div><div class="info info-verbose">Total: 13m (Test Runtime: 13m)</div></div>
+				</div>
+			</div>
+			<div class="station-section">
+				<h3 style="color: #1e3a5f; margin: 0 0 6px 0; font-size: 18px; font-weight: 600;">Test Station 2A325</h3>
+				<p style="color: #475569; margin: 0 0 18px 0; font-size: 14px;">Record of 2 systems (2 FP)</p>
+				<div class="timeline-row"><div class="sys" data-system="DR14G-141" data-start="2026-01-05 14:41" data-finish="2026-01-06 11:19"><div class="label">DR14G-141</div><div class="timestamps info-verbose">Start: 2026-01-05 14:41 Finish: 2026-01-06 11:19</div><div class="track"><div class="seg event pass" style="width: 1.050080775444265%; position: relative;" title="2026-01-05 14:41:56 (Work: 13m)" ><span class="seg-label">PRETEST 13m</span></div><div class="seg idle" style="width: 15.266558966074314%; min-width: 10px;" title="2026-01-05 18:04:13 (Work: 30m)"><span class="seg-label">3h 9m</span></div><div class="seg event pass" style="width: 2.4232633279483036%; position: relative;" title="2026-01-05 18:04:13 (Work: 30m)" ><span class="seg-label">FAT 30m</span></div><div class="seg idle" style="width: 1.1308562197092082%; min-width: 10px;" title="2026-01-05 18:48:25 (Work: 1h 11m)"><span class="seg-label">14m</span></div><div class="seg event pass" style="width: 11.550888529886914%; position: relative;" title="2026-01-05 18:48:25 (Work: 1h 11m)" ><span class="seg-label">FRO 2h 23m</span></div><div class="seg idle" style="width: 66.72051696284329%; min-width: 10px;" title="2026-01-06 10:57:28 (Work: 23m)"><span class="seg-label">13h 46m</span></div><div class="seg event pass" style="width: 1.8578352180936994%; position: relative;" title="2026-01-06 10:57:28 (Work: 23m)" ><span class="seg-label">FFT 23m</span></div></div><div class="info info-verbose">Total: 20h 38m (Test Runtime: 2h 17m)</div></div><div class="sys" data-system="DR14G-145" data-start="2026-01-06 12:02" data-finish="2026-01-06 17:18"><div class="label">DR14G-145</div><div class="timestamps info-verbose">Start: 2026-01-06 12:02 Finish: 2026-01-06 17:18</div><div class="track"><div class="seg event pass" style="width: 4.113924050632911%; position: relative;" title="2026-01-06 12:02:57 (Work: 13m)" ><span class="seg-label">PRETEST 13m</span></div><div class="seg idle" style="width: 5.379746835443038%; min-width: 10px;" title="2026-01-06 12:33:10 (Work: 30m)"><span class="seg-label">17m</span></div><div class="seg event pass" style="width: 9.49367088607595%; position: relative;" title="2026-01-06 12:33:10 (Work: 30m)" ><span class="seg-label">FAT 30m</span></div><div class="seg idle" style="width: 4.113924050632911%; min-width: 10px;" title="2026-01-06 13:17:08 (Work: 2h 25m)"><span class="seg-label">13m</span></div><div class="seg event pass" style="width: 45.88607594936709%; position: relative;" title="2026-01-06 13:17:08 (Work: 2h 25m)" ><span class="seg-label">FRO 2h 25m</span></div><div class="seg idle" style="width: 10.443037974683545%; min-width: 10px;" title="2026-01-06 16:15:55 (Work: 36m)"><span class="seg-label">33m</span></div><div class="seg event pass" style="width: 11.39240506329114%; position: relative;" title="2026-01-06 16:15:55 (Work: 36m)" ><span class="seg-label">FFT 36m</span></div><div class="seg idle" style="width: 4.430379746835443%; min-width: 10px;" title="2026-01-06 17:06:54 (Work: 15m)"><span class="seg-label">14m</span></div><div class="seg event pass" style="width: 4.746835443037975%; position: relative;" title="2026-01-06 17:06:54 (Work: 15m)" ><span class="seg-label">FQA 15m</span></div></div><div class="info info-verbose">Total: 5h 16m (Test Runtime: 3h 59m)</div></div>
+				</div>
+			</div>
+			<div class="station-section">
+				<h3 style="color: #1e3a5f; margin: 0 0 6px 0; font-size: 18px; font-weight: 600;">Test Station 2A326</h3>
+				<p style="color: #475569; margin: 0 0 18px 0; font-size: 14px;">Record of 1 systems (1 WIP)</p>
+				<div class="timeline-row"><div class="sys" data-system="DR14G-138" data-start="2026-01-05 13:58" data-finish="2026-01-06 17:27"><div class="label">DR14G-138</div><div class="timestamps info-verbose">Start: 2026-01-05 13:58 Finish: 2026-01-06 17:27</div><div class="track"><div class="seg event pass" style="width: 0.4851425106124924%; position: relative;" title="2026-01-05 13:58:53 (Work: 8m)" ><span class="seg-label">PRETEST 8m</span></div><div class="seg idle" style="width: 2.2437841115827775%; min-width: 10px;" title="2026-01-05 14:43:55 (Work: 30m)"><span class="seg-label">37m</span></div><div class="seg event pass clickable" style="width: 1.8192844147968468%; position: relative;" title="2026-01-05 14:43:55 (Work: 30m)" onclick="showFailureDetail('FAT', '', 'UmVwbGFjZWQ6IEJSSURHRUIsUzdUIEJSSURHRS9CIEZBTiBBU1NZClM3VEdCQjFDMjUxMDA3MDc4IC0+IFM3VEdCQjFDMjUxMDA3MDY5')"><span class="seg-label">FAT 30m</span><div style="position:absolute; top:-6px; right:-6px; background:#fbbf24; color:black; font-size:9px; width:12px; height:12px; border-radius:50%; text-align:center; line-height:12px; border:1px solid white;">R</div></div><div class="seg idle" style="width: 10.430563978168587%; min-width: 10px;" title="2026-01-05 18:06:18 (Work: 3m)"><span class="seg-label">2h 52m</span></div><div class="seg event pass" style="width: 0.18192844147968465%; position: relative;" title="2026-01-05 18:06:18 (Work: 3m)" ><span class="seg-label">PRETEST 3m</span></div><div class="seg idle" style="width: 0.9096422073984234%; min-width: 10px;" title="2026-01-05 18:25:16 (Work: 30m)"><span class="seg-label">15m</span></div><div class="seg event pass" style="width: 1.8192844147968468%; position: relative;" title="2026-01-05 18:25:16 (Work: 30m)" ><span class="seg-label">FAT 30m</span></div><div class="seg idle" style="width: 0.7883565797453002%; min-width: 10px;" title="2026-01-05 19:08:49 (Work: 51m)"><span class="seg-label">13m</span></div><div class="seg event fail clickable" style="width: 4.972710733778047%; position: relative;" title="2026-01-05 19:08:49 (Work: 51m)" onclick="showFailureDetail('FRO', 'MjAyNi0wMS0wNSAyMDozMTowNCw5NjggLSBFUlJPUiAtIFtGVF9CVVJOSU5dW0ZBSUxAXSBGVF9CVVJOSU4gdGVzdCBOT1QgUGFzcyEKLT4gW0NIRUNLUE9JTlQgRkFJTF0gR1BVLCBUVCBVQkIgRlVOQyBCVVJOSU4gVEVTVCBbdHRfZnRfdWJiX3Rlc3RfYnVybmluXQ==', 'UmVwbGFjZWQ6IEJBU0VCT0FSRCxTN1QgVUJCLTQKVDM4UzdUQkEwMDkwNTQ4MDAzWCAtPiBUMzhTN1RCQTAwOTA1NDgwMDJW')"><span class="seg-label">FRO 1h 22m</span><div style="position:absolute; top:-6px; right:-6px; background:#fbbf24; color:black; font-size:9px; width:12px; height:12px; border-radius:50%; text-align:center; line-height:12px; border:1px solid white;">R</div></div><div class="seg idle" style="width: 47.48332322619769%; min-width: 10px;" title="2026-01-06 09:34:08 (Work: 4m)"><span class="seg-label">13h 3m</span></div><div class="seg event pass" style="width: 0.2425712553062462%; position: relative;" title="2026-01-06 09:34:08 (Work: 4m)" ><span class="seg-label">PRETEST 4m</span></div><div class="seg idle" style="width: 0.9702850212249848%; min-width: 10px;" title="2026-01-06 09:54:53 (Work: 30m)"><span class="seg-label">16m</span></div><div class="seg event pass" style="width: 1.8192844147968468%; position: relative;" title="2026-01-06 09:54:53 (Work: 30m)" ><span class="seg-label">FAT 30m</span></div><div class="seg idle" style="width: 0.8489993935718617%; min-width: 10px;" title="2026-01-06 10:39:21 (Work: 1h 23m)"><span class="seg-label">14m</span></div><div class="seg event fail clickable" style="width: 5.033353547604609%; position: relative;" title="2026-01-06 10:39:21 (Work: 1h 23m)" onclick="showFailureDetail('FRO', 'MjAyNi0wMS0wNiAxMjowMjowOSw2MzYgLSBFUlJPUiAtIFtGVF9CVVJOSU5dW0ZBSUxAXSBGVF9CVVJOSU4gdGVzdCBOT1QgUGFzcyEKLT4gW0NIRUNLUE9JTlQgRkFJTF0gR1BVLCBUVCBVQkIgRlVOQyBCVVJOSU4gVEVTVCBbdHRfZnRfdWJiX3Rlc3RfYnVybmluXQ==', 'UmVwbGFjZWQ6IEJBU0VCT0FSRCxTN1QgVUJCLTIKVDM4UzdUQkEwMDkwNTQ4MDAxViAtPiBUMzhTN1RCQTAwOTA1NDgwMDJR')"><span class="seg-label">FRO 1h 23m</span><div style="position:absolute; top:-6px; right:-6px; background:#fbbf24; color:black; font-size:9px; width:12px; height:12px; border-radius:50%; text-align:center; line-height:12px; border:1px solid white;">R</div></div><div class="seg idle" style="width: 7.337780473013948%; min-width: 10px;" title="2026-01-06 14:04:05 (Work: 4m)"><span class="seg-label">2h 1m</span></div><div class="seg event pass" style="width: 0.2425712553062462%; position: relative;" title="2026-01-06 14:04:05 (Work: 4m)" ><span class="seg-label">PRETEST 4m</span></div><div class="seg idle" style="width: 1.0309278350515463%; min-width: 10px;" title="2026-01-06 14:25:06 (Work: 30m)"><span class="seg-label">17m</span></div><div class="seg event pass" style="width: 1.8192844147968468%; position: relative;" title="2026-01-06 14:25:06 (Work: 30m)" ><span class="seg-label">FAT 30m</span></div><div class="seg idle" style="width: 0.7883565797453002%; min-width: 10px;" title="2026-01-06 15:08:39 (Work: 2h 24m)"><span class="seg-label">13m</span></div><div class="seg event pass clickable" style="width: 8.732565191024863%; position: relative;" title="2026-01-06 15:08:39 (Work: 2h 24m)" onclick="showFailureDetail('FRO', '', 'UmVwbGFjZWQ6IEJBU0VCT0FSRCxTN1QgVUJCLTIKVDM4UzdUQkEwMDkwNTQ4MDAyUSAtPiBUMzhTN1RCQTAwOTA1NDgwMDFWClJlcGxhY2VkOiBCQVNFQk9BUkQsUzdUIFVCQi00ClQzOFM3VEJBMDA5MDU0ODAwMlYgLT4gVDM4UzdUQkEwMDkwNTQ4MDAzWApSZXBsYWNlZDogQlJJREdFQixTN1QgQlJJREdFL0IgRkFOIEFTU1kKUzdUR0JCMUMyNTEwMDcwNjkgLT4gUzdUR0JCMUMyNTEwMDcwNzg=')"><span class="seg-label">FRO 2h 24m</span><div style="position:absolute; top:-6px; right:-6px; background:#fbbf24; color:black; font-size:9px; width:12px; height:12px; border-radius:50%; text-align:center; line-height:12px; border:1px solid white;">R</div></div></div><div class="info info-verbose">Total: 1d 3h 29m (Test Runtime: 6h 57m)</div></div>
+				</div>
+			</div>
+            <div class="legend">
+                <div class="legend-item"><div class="legend-box" style="background: linear-gradient(135deg, #059669, #047857);"></div><span>Pass (Green)</span></div>
+                <div class="legend-item"><div class="legend-box" style="background: linear-gradient(135deg, #dc2626, #b91c1c);"></div><span>Fail (Red)</span></div>
+                <div class="legend-item"><div class="legend-box" style="background: linear-gradient(135deg, #cbd5e1, #94a3b8);"></div><span>Idle (Gray)</span></div>
+                <div class="legend-item" style="border-left: 2px solid var(--border); padding-left: 14px;"><span>⏸ Normal gap | 🌙 After-hours</span></div>
+            </div>
+        </div>
+        
+        <div id="replacements" class="view">
+            <h2>Component Replacement Summary</h2>
+            <p style="color: #666; margin-bottom: 20px;">Aggregated count of replacements per phase. <strong>Hover over red cells</strong> to see potential causes.</p>
+            <table style="width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 10px;"><tr style="background: #1e3a5f; color: white;"><th style="padding: 12px; border: 1px solid #e2e8f0; text-align: center;">Component Name</th><th style="padding: 12px; border: 1px solid #e2e8f0; text-align: center;">PRETEST</th><th style="padding: 12px; border: 1px solid #e2e8f0; text-align: center;">FAT</th><th style="padding: 12px; border: 1px solid #e2e8f0; text-align: center;">FRO</th><th style="padding: 12px; border: 1px solid #e2e8f0; text-align: center;">FFT</th><th style="padding: 12px; border: 1px solid #e2e8f0; text-align: center;">FQA</th></tr><tr style="background: #ffffff; border-bottom: 1px solid #e2e8f0;"><td style="padding: 10px; border: 1px solid #e2e8f0; font-weight: 500; text-align: left; color: #334155;">BASEBOARD,S7T UBB-2</td><td style="padding: 10px; border: 1px solid #e2e8f0; text-align: center;"><span style="color: #e2e8f0;">-</span></td><td style="padding: 10px; border: 1px solid #e2e8f0; text-align: center;"><span style="color: #e2e8f0;">-</span></td><td style="padding: 10px; border: 1px solid #e2e8f0; text-align: center;"><div title="BASEBOARD,S7T UBB-2 replaced in FRO
+
+Failure Signatures:
+• ERROR - [FT_BURNIN][FAIL@] FT_BURNIN test NOT Pass!
+-> [CHECKPOINT FAIL] GPU, TT UBB FUNC BURNIN TEST [tt_ft_ubb_test_burnin] (x2)" style="background: rgba(220, 38, 38, 0.5); color: #dc2626; border-radius: 4px; padding: 4px 8px; font-weight: 600; display: inline-block; cursor: help;">2</div></td><td style="padding: 10px; border: 1px solid #e2e8f0; text-align: center;"><span style="color: #e2e8f0;">-</span></td><td style="padding: 10px; border: 1px solid #e2e8f0; text-align: center;"><span style="color: #e2e8f0;">-</span></td></tr><tr style="background: #ffffff; border-bottom: 1px solid #e2e8f0;"><td style="padding: 10px; border: 1px solid #e2e8f0; font-weight: 500; text-align: left; color: #334155;">BASEBOARD,S7T UBB-3</td><td style="padding: 10px; border: 1px solid #e2e8f0; text-align: center;"><span style="color: #e2e8f0;">-</span></td><td style="padding: 10px; border: 1px solid #e2e8f0; text-align: center;"><span style="color: #e2e8f0;">-</span></td><td style="padding: 10px; border: 1px solid #e2e8f0; text-align: center;"><div title="BASEBOARD,S7T UBB-3 replaced in FRO
+
+Failure Signatures:
+• ERROR - [FT_BURNIN][FAIL@] FT_BURNIN test NOT Pass!
+-> [CHECKPOINT FAIL] GPU, TT UBB FUNC BURNIN TEST [tt_ft_ubb_test_burnin] (x1)" style="background: rgba(220, 38, 38, 0.35); color: #dc2626; border-radius: 4px; padding: 4px 8px; font-weight: 600; display: inline-block; cursor: help;">1</div></td><td style="padding: 10px; border: 1px solid #e2e8f0; text-align: center;"><span style="color: #e2e8f0;">-</span></td><td style="padding: 10px; border: 1px solid #e2e8f0; text-align: center;"><span style="color: #e2e8f0;">-</span></td></tr><tr style="background: #ffffff; border-bottom: 1px solid #e2e8f0;"><td style="padding: 10px; border: 1px solid #e2e8f0; font-weight: 500; text-align: left; color: #334155;">BASEBOARD,S7T UBB-4</td><td style="padding: 10px; border: 1px solid #e2e8f0; text-align: center;"><span style="color: #e2e8f0;">-</span></td><td style="padding: 10px; border: 1px solid #e2e8f0; text-align: center;"><span style="color: #e2e8f0;">-</span></td><td style="padding: 10px; border: 1px solid #e2e8f0; text-align: center;"><div title="BASEBOARD,S7T UBB-4 replaced in FRO
+
+Failure Signatures:
+• ERROR - [FT_BURNIN][FAIL@] FT_BURNIN test NOT Pass!
+-> [CHECKPOINT FAIL] GPU, TT UBB FUNC BURNIN TEST [tt_ft_ubb_test_burnin] (x2)" style="background: rgba(220, 38, 38, 0.5); color: #dc2626; border-radius: 4px; padding: 4px 8px; font-weight: 600; display: inline-block; cursor: help;">2</div></td><td style="padding: 10px; border: 1px solid #e2e8f0; text-align: center;"><span style="color: #e2e8f0;">-</span></td><td style="padding: 10px; border: 1px solid #e2e8f0; text-align: center;"><span style="color: #e2e8f0;">-</span></td></tr><tr style="background: #ffffff; border-bottom: 1px solid #e2e8f0;"><td style="padding: 10px; border: 1px solid #e2e8f0; font-weight: 500; text-align: left; color: #334155;">BRIDGEB,S7T BRIDGE/B FAN ASSY</td><td style="padding: 10px; border: 1px solid #e2e8f0; text-align: center;"><span style="color: #e2e8f0;">-</span></td><td style="padding: 10px; border: 1px solid #e2e8f0; text-align: center;"><div title="BRIDGEB,S7T BRIDGE/B FAN ASSY replaced in FAT
+
+Failure Signatures:
+• No specific failure log found (x1)" style="background: rgba(220, 38, 38, 0.35); color: #dc2626; border-radius: 4px; padding: 4px 8px; font-weight: 600; display: inline-block; cursor: help;">1</div></td><td style="padding: 10px; border: 1px solid #e2e8f0; text-align: center;"><div title="BRIDGEB,S7T BRIDGE/B FAN ASSY replaced in FRO
+
+Failure Signatures:
+• ERROR - [FT_BURNIN][FAIL@] FT_BURNIN test NOT Pass!
+-> [CHECKPOINT FAIL] GPU, TT UBB FUNC BURNIN TEST [tt_ft_ubb_test_burnin] (x1)" style="background: rgba(220, 38, 38, 0.35); color: #dc2626; border-radius: 4px; padding: 4px 8px; font-weight: 600; display: inline-block; cursor: help;">1</div></td><td style="padding: 10px; border: 1px solid #e2e8f0; text-align: center;"><span style="color: #e2e8f0;">-</span></td><td style="padding: 10px; border: 1px solid #e2e8f0; text-align: center;"><span style="color: #e2e8f0;">-</span></td></tr><tr style="background: #ffffff; border-bottom: 1px solid #e2e8f0;"><td style="padding: 10px; border: 1px solid #e2e8f0; font-weight: 500; text-align: left; color: #334155;">PCIe Linking Board</td><td style="padding: 10px; border: 1px solid #e2e8f0; text-align: center;"><div title="PCIe Linking Board replaced in PRETEST
+
+Failure Signatures:
+• -> [CHECKPOINT FAIL] GPU, ARC ASIC FIRMWARE UPDATE [arc_asic_fw_update] (x1)" style="background: rgba(220, 38, 38, 0.35); color: #dc2626; border-radius: 4px; padding: 4px 8px; font-weight: 600; display: inline-block; cursor: help;">1</div></td><td style="padding: 10px; border: 1px solid #e2e8f0; text-align: center;"><span style="color: #e2e8f0;">-</span></td><td style="padding: 10px; border: 1px solid #e2e8f0; text-align: center;"><span style="color: #e2e8f0;">-</span></td><td style="padding: 10px; border: 1px solid #e2e8f0; text-align: center;"><span style="color: #e2e8f0;">-</span></td><td style="padding: 10px; border: 1px solid #e2e8f0; text-align: center;"><span style="color: #e2e8f0;">-</span></td></tr></table>
+            <h2 style="margin-top: 40px; border-top: 1px solid #e2e8f0; padding-top: 30px;">Component Failure Analysis</h2>
+            <div style="margin-bottom: 30px; background: white; padding: 20px; border-radius: 8px; border: 1px solid #e2e8f0;"><h3 style="margin-top:0; color: #1e3a5f;">Top Replaced Components (Grouped)</h3><div style="margin-bottom: 12px;"><div style="display:flex; justify-content:space-between; font-size:13px; margin-bottom:4px; font-weight:600; color:#475569;"><span>BASEBOARD,S7T UBB</span><span>5</span></div><div style="width:100%; background:#f1f5f9; border-radius:4px; height:12px;"><div style="width:100.0%; background:#dc2626; height:100%; border-radius:4px;"></div></div></div><div style="margin-bottom: 12px;"><div style="display:flex; justify-content:space-between; font-size:13px; margin-bottom:4px; font-weight:600; color:#475569;"><span>BRIDGEB,S7T BRIDGE/B FAN ASSY</span><span>2</span></div><div style="width:100%; background:#f1f5f9; border-radius:4px; height:12px;"><div style="width:40.0%; background:#dc2626; height:100%; border-radius:4px;"></div></div></div><div style="margin-bottom: 12px;"><div style="display:flex; justify-content:space-between; font-size:13px; margin-bottom:4px; font-weight:600; color:#475569;"><span>PCIe Linking Board</span><span>1</span></div><div style="width:100%; background:#f1f5f9; border-radius:4px; height:12px;"><div style="width:20.0%; background:#dc2626; height:100%; border-radius:4px;"></div></div></div></div><h3 style="color: #1e3a5f; margin-bottom: 15px;">Detailed Breakdown by Component</h3><table style="width: 100%; border-collapse: collapse; font-size: 13px;"><tr style="background: #1e3a5f; color: white;"><th>Component Group</th><th>Top Failure Signatures (Aggregated)</th><th>Total Replacements</th></tr><tr style='border-bottom:1px solid #eee; background:white; vertical-align:top;'><td style='padding:12px; font-weight:600; color:#334155; width:25%;'>BASEBOARD,S7T UBB</td><td style='padding:12px;'><ul style="margin: 0; padding-left: 20px; color: #475569;"><li title="ERROR - [FT_BURNIN][FAIL@] FT_BURNIN test NOT Pass!
+-> [CHECKPOINT FAIL] GPU, TT UBB FUNC BURNIN TEST [tt_ft_ubb_test_burnin]">ERROR - [FT_BURNIN][FAIL@] FT_BURNIN test NOT Pass!
+-> [CHECKPOINT FAIL] GPU, TT UBB FUNC BURNIN TEST [tt_ft_ubb_test_bu... <strong>(x5)</strong></li></ul></td><td style='text-align:center; padding:12px; font-weight:bold; color:#dc2626; font-size:14px; width:15%;'>5</td></tr><tr style='border-bottom:1px solid #eee; background:white; vertical-align:top;'><td style='padding:12px; font-weight:600; color:#334155; width:25%;'>BRIDGEB,S7T BRIDGE/B FAN ASSY</td><td style='padding:12px;'><ul style="margin: 0; padding-left: 20px; color: #475569;"><li title="ERROR - [FT_BURNIN][FAIL@] FT_BURNIN test NOT Pass!
+-> [CHECKPOINT FAIL] GPU, TT UBB FUNC BURNIN TEST [tt_ft_ubb_test_burnin]">ERROR - [FT_BURNIN][FAIL@] FT_BURNIN test NOT Pass!
+-> [CHECKPOINT FAIL] GPU, TT UBB FUNC BURNIN TEST [tt_ft_ubb_test_bu... <strong>(x1)</strong></li><li title="No specific failure log found">No specific failure log found <strong>(x1)</strong></li></ul></td><td style='text-align:center; padding:12px; font-weight:bold; color:#dc2626; font-size:14px; width:15%;'>2</td></tr><tr style='border-bottom:1px solid #eee; background:white; vertical-align:top;'><td style='padding:12px; font-weight:600; color:#334155; width:25%;'>PCIe Linking Board</td><td style='padding:12px;'><ul style="margin: 0; padding-left: 20px; color: #475569;"><li title="-> [CHECKPOINT FAIL] GPU, ARC ASIC FIRMWARE UPDATE [arc_asic_fw_update]">-> [CHECKPOINT FAIL] GPU, ARC ASIC FIRMWARE UPDATE [arc_asic_fw_update] <strong>(x1)</strong></li></ul></td><td style='text-align:center; padding:12px; font-weight:bold; color:#dc2626; font-size:14px; width:15%;'>1</td></tr></table>
+        </div>
+
+        <div id="detailed" class="view">
+            <h2>Event Details</h2>
+            <div style="margin-bottom: 19px;"><label>System</label><select id="system-selector" onchange="renderDetailedTimeline(this.value)" style="padding: 7px;"><option value="DR14G-136">DR14G-136</option>
+<option value="DR14G-137">DR14G-137</option>
+<option value="DR14G-138">DR14G-138</option>
+<option value="DR14G-139">DR14G-139</option>
+<option value="DR14G-141">DR14G-141</option>
+<option value="DR14G-142">DR14G-142</option>
+<option value="DR14G-143">DR14G-143</option>
+<option value="DR14G-144">DR14G-144</option>
+<option value="DR14G-145">DR14G-145</option>
+<option value="DR14G-146">DR14G-146</option></select></div>
+            <div id="detailed-content" class="detailed-table-wrapper"></div>
+        </div>
+        
+        <div id="stats" class="view">
+            <h2>Performance Summary</h2>
+            <p style="margin-bottom:15px; font-size:14px; color:#64748b;"><strong>Avg Test Runtime:</strong> Only actual testing events.<br><strong>Gross Floor Time:</strong> Start to Finish duration, filtered by shift hours (08:00-20:00).</p>
+            <table style="width: 100%; border-collapse: collapse; font-size: 14px;"><tr style="background: #1e3a5f; color: white;"><th style="padding: 11px; border: 1px solid #e2e8f0; font-weight: 600;">System</th><th style="padding: 11px; border: 1px solid #e2e8f0; text-align: center; font-weight: 600;">Status</th><th style="padding: 11px; border: 1px solid #e2e8f0; text-align: center; font-weight: 600;">Total Duration (Wall)</th><th style="padding: 11px; border: 1px solid #e2e8f0; text-align: center; font-weight: 600; background:#f0f9ff; color:#0369a1;">Avg Test Runtime<br><span style="font-size:11px;font-weight:400">(No Gaps)</span></th><th style="padding: 11px; border: 1px solid #e2e8f0; text-align: center; font-weight: 600; background:#f8fafc; color:#475569;">Gross Floor Time<br><span style="font-size:11px;font-weight:400">(Incl. Gaps in Shift)</span></th></tr><tr style="background: #f8fafc;"><td style="padding: 11px; border: 1px solid #e2e8f0; font-weight: 600;">DR14G-136</td><td style="padding: 11px; border: 1px solid #e2e8f0; text-align: center; color: #059669; font-weight: 600;">Complete</td><td style="padding: 11px; border: 1px solid #e2e8f0; text-align: center;">5h 48m</td><td style="padding: 11px; border: 1px solid #e2e8f0; text-align: center; font-weight:700; color:#0284c7; background:#f0f9ff;">4h 33m</td><td style="padding: 11px; border: 1px solid #e2e8f0; text-align: center; color:#475569;">5h 48m</td></tr><tr style="background: #f8fafc;"><td style="padding: 11px; border: 1px solid #e2e8f0; font-weight: 600;">DR14G-137</td><td style="padding: 11px; border: 1px solid #e2e8f0; text-align: center; color: #059669; font-weight: 600;">Complete</td><td style="padding: 11px; border: 1px solid #e2e8f0; text-align: center;">4h 1m</td><td style="padding: 11px; border: 1px solid #e2e8f0; text-align: center; font-weight:700; color:#0284c7; background:#f0f9ff;">3h 13m</td><td style="padding: 11px; border: 1px solid #e2e8f0; text-align: center; color:#475569;">4h 1m</td></tr><tr style="background: #f8fafc;"><td style="padding: 11px; border: 1px solid #e2e8f0; font-weight: 600;">DR14G-138</td><td style="padding: 11px; border: 1px solid #e2e8f0; text-align: center; color: #f59e0b; font-weight: 600;">Wip</td><td style="padding: 11px; border: 1px solid #e2e8f0; text-align: center;">27h 33m</td><td style="padding: 11px; border: 1px solid #e2e8f0; text-align: center; font-weight:700; color:#0284c7; background:#f0f9ff;">6h 57m</td><td style="padding: 11px; border: 1px solid #e2e8f0; text-align: center; color:#475569;">15h 33m</td></tr><tr style="background: #f8fafc;"><td style="padding: 11px; border: 1px solid #e2e8f0; font-weight: 600;">DR14G-139</td><td style="padding: 11px; border: 1px solid #e2e8f0; text-align: center; color: #059669; font-weight: 600;">Complete</td><td style="padding: 11px; border: 1px solid #e2e8f0; text-align: center;">4h 14m</td><td style="padding: 11px; border: 1px solid #e2e8f0; text-align: center; font-weight:700; color:#0284c7; background:#f0f9ff;">3h 29m</td><td style="padding: 11px; border: 1px solid #e2e8f0; text-align: center; color:#475569;">4h 14m</td></tr><tr style="background: #f8fafc;"><td style="padding: 11px; border: 1px solid #e2e8f0; font-weight: 600;">DR14G-141</td><td style="padding: 11px; border: 1px solid #e2e8f0; text-align: center; color: #059669; font-weight: 600;">Complete</td><td style="padding: 11px; border: 1px solid #e2e8f0; text-align: center;">20h 38m</td><td style="padding: 11px; border: 1px solid #e2e8f0; text-align: center; font-weight:700; color:#0284c7; background:#f0f9ff;">2h 17m</td><td style="padding: 11px; border: 1px solid #e2e8f0; text-align: center; color:#475569;">8h 38m</td></tr><tr style="background: #f8fafc;"><td style="padding: 11px; border: 1px solid #e2e8f0; font-weight: 600;">DR14G-142</td><td style="padding: 11px; border: 1px solid #e2e8f0; text-align: center; color: #f59e0b; font-weight: 600;">Wip</td><td style="padding: 11px; border: 1px solid #e2e8f0; text-align: center;">0h 14m</td><td style="padding: 11px; border: 1px solid #e2e8f0; text-align: center; font-weight:700; color:#0284c7; background:#f0f9ff;">0h 14m</td><td style="padding: 11px; border: 1px solid #e2e8f0; text-align: center; color:#475569;">0h 14m</td></tr><tr style="background: #f8fafc;"><td style="padding: 11px; border: 1px solid #e2e8f0; font-weight: 600;">DR14G-143</td><td style="padding: 11px; border: 1px solid #e2e8f0; text-align: center; color: #f59e0b; font-weight: 600;">Wip</td><td style="padding: 11px; border: 1px solid #e2e8f0; text-align: center;">22h 46m</td><td style="padding: 11px; border: 1px solid #e2e8f0; text-align: center; font-weight:700; color:#0284c7; background:#f0f9ff;">5h 3m</td><td style="padding: 11px; border: 1px solid #e2e8f0; text-align: center; color:#475569;">10h 46m</td></tr><tr style="background: #f8fafc;"><td style="padding: 11px; border: 1px solid #e2e8f0; font-weight: 600;">DR14G-144</td><td style="padding: 11px; border: 1px solid #e2e8f0; text-align: center; color: #059669; font-weight: 600;">Complete</td><td style="padding: 11px; border: 1px solid #e2e8f0; text-align: center;">21h 36m</td><td style="padding: 11px; border: 1px solid #e2e8f0; text-align: center; font-weight:700; color:#0284c7; background:#f0f9ff;">3h 58m</td><td style="padding: 11px; border: 1px solid #e2e8f0; text-align: center; color:#475569;">9h 43m</td></tr><tr style="background: #f8fafc;"><td style="padding: 11px; border: 1px solid #e2e8f0; font-weight: 600;">DR14G-145</td><td style="padding: 11px; border: 1px solid #e2e8f0; text-align: center; color: #059669; font-weight: 600;">Complete</td><td style="padding: 11px; border: 1px solid #e2e8f0; text-align: center;">5h 18m</td><td style="padding: 11px; border: 1px solid #e2e8f0; text-align: center; font-weight:700; color:#0284c7; background:#f0f9ff;">3h 59m</td><td style="padding: 11px; border: 1px solid #e2e8f0; text-align: center; color:#475569;">5h 18m</td></tr><tr style="background: #f8fafc;"><td style="padding: 11px; border: 1px solid #e2e8f0; font-weight: 600;">DR14G-146</td><td style="padding: 11px; border: 1px solid #e2e8f0; text-align: center; color: #f59e0b; font-weight: 600;">Wip</td><td style="padding: 11px; border: 1px solid #e2e8f0; text-align: center;">0h 13m</td><td style="padding: 11px; border: 1px solid #e2e8f0; text-align: center; font-weight:700; color:#0284c7; background:#f0f9ff;">0h 13m</td><td style="padding: 11px; border: 1px solid #e2e8f0; text-align: center; color:#475569;">0h 13m</td></tr></table>
+        </div>
+    </div>
+
+    <div id="infoModal" class="modal-overlay">
+        <div class="modal-box">
+            <span class="modal-close" onclick="closeInfoModal()">&times;</span>
+            <div class="modal-header" id="infoModalHeader">Title</div>
+            <div id="infoModalContent"></div>
+        </div>
+    </div>
+    
+    <div id="listModal" class="modal-overlay">
+        <div class="modal-box">
+            <span class="modal-close" onclick="closeListModal()">&times;</span>
+            <div class="modal-header" id="listModalHeader">System List</div>
+            <div class="modal-section">
+                <div class="modal-content" id="listModalContent" style="background: white; border: none; padding: 0;"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const timelineData = {"DR14G-136": [{"event": "PRETEST", "duration_min": 14, "working_min": 14, "idle_min": 0, "start_time": "2026-01-05 11:53:21", "failures": "", "replacements": "", "result": "PASS"}, {"event": "FAT", "duration_min": 31, "working_min": 31, "idle_min": 34, "start_time": "2026-01-05 12:41:41", "failures": "", "replacements": "", "result": "PASS"}, {"event": "FRO", "duration_min": 145, "working_min": 145, "idle_min": 27, "start_time": "2026-01-05 13:39:55", "failures": "", "replacements": "", "result": "PASS"}, {"event": "FFT", "duration_min": 83, "working_min": 83, "idle_min": 13, "start_time": "2026-01-05 16:18:41", "failures": "", "replacements": "", "result": "PASS"}], "DR14G-137": [{"event": "FAT", "duration_min": 30, "working_min": 30, "idle_min": 0, "start_time": "2026-01-05 13:38:44", "failures": "", "replacements": "", "result": "PASS"}, {"event": "FRO", "duration_min": 143, "working_min": 143, "idle_min": 14, "start_time": "2026-01-05 14:22:52", "failures": "", "replacements": "", "result": "PASS"}, {"event": "FFT", "duration_min": 20, "working_min": 20, "idle_min": 34, "start_time": "2026-01-05 17:20:11", "failures": "", "replacements": "", "result": "PASS"}], "DR14G-138": [{"event": "PRETEST", "duration_min": 8, "working_min": 8, "idle_min": 0, "start_time": "2026-01-05 13:58:53", "failures": "", "replacements": "", "result": "PASS"}, {"event": "FAT", "duration_min": 30, "working_min": 30, "idle_min": 37, "start_time": "2026-01-05 14:43:55", "failures": "", "replacements": "Replaced: BRIDGEB,S7T BRIDGE/B FAN ASSY\nS7TGBB1C251007078 -> S7TGBB1C251007069", "result": "PASS"}, {"event": "PRETEST", "duration_min": 3, "working_min": 3, "idle_min": 172, "start_time": "2026-01-05 18:06:18", "failures": "", "replacements": "", "result": "PASS"}, {"event": "FAT", "duration_min": 30, "working_min": 30, "idle_min": 15, "start_time": "2026-01-05 18:25:16", "failures": "", "replacements": "", "result": "PASS"}, {"event": "FRO", "duration_min": 82, "working_min": 51, "idle_min": 13, "start_time": "2026-01-05 19:08:49", "failures": "2026-01-05 20:31:04,968 - ERROR - [FT_BURNIN][FAIL@] FT_BURNIN test NOT Pass!\n-> [CHECKPOINT FAIL] GPU, TT UBB FUNC BURNIN TEST [tt_ft_ubb_test_burnin]", "replacements": "Replaced: BASEBOARD,S7T UBB-4\nT38S7TBA0090548003X -> T38S7TBA0090548002V", "result": "FAIL"}, {"event": "PRETEST", "duration_min": 4, "working_min": 4, "idle_min": 783, "start_time": "2026-01-06 09:34:08", "failures": "", "replacements": "", "result": "PASS"}, {"event": "FAT", "duration_min": 30, "working_min": 30, "idle_min": 16, "start_time": "2026-01-06 09:54:53", "failures": "", "replacements": "", "result": "PASS"}, {"event": "FRO", "duration_min": 83, "working_min": 83, "idle_min": 14, "start_time": "2026-01-06 10:39:21", "failures": "2026-01-06 12:02:09,636 - ERROR - [FT_BURNIN][FAIL@] FT_BURNIN test NOT Pass!\n-> [CHECKPOINT FAIL] GPU, TT UBB FUNC BURNIN TEST [tt_ft_ubb_test_burnin]", "replacements": "Replaced: BASEBOARD,S7T UBB-2\nT38S7TBA0090548001V -> T38S7TBA0090548002Q", "result": "FAIL"}, {"event": "PRETEST", "duration_min": 4, "working_min": 4, "idle_min": 121, "start_time": "2026-01-06 14:04:05", "failures": "", "replacements": "", "result": "PASS"}, {"event": "FAT", "duration_min": 30, "working_min": 30, "idle_min": 17, "start_time": "2026-01-06 14:25:06", "failures": "", "replacements": "", "result": "PASS"}, {"event": "FRO", "duration_min": 144, "working_min": 144, "idle_min": 13, "start_time": "2026-01-06 15:08:39", "failures": "", "replacements": "Replaced: BASEBOARD,S7T UBB-2\nT38S7TBA0090548002Q -> T38S7TBA0090548001V\nReplaced: BASEBOARD,S7T UBB-4\nT38S7TBA0090548002V -> T38S7TBA0090548003X\nReplaced: BRIDGEB,S7T BRIDGE/B FAN ASSY\nS7TGBB1C251007069 -> S7TGBB1C251007078", "result": "PASS"}], "DR14G-139": [{"event": "PRETEST", "duration_min": 14, "working_min": 14, "idle_min": 0, "start_time": "2026-01-05 13:58:28", "failures": "", "replacements": "", "result": "PASS"}, {"event": "FAT", "duration_min": 30, "working_min": 30, "idle_min": 16, "start_time": "2026-01-05 14:29:08", "failures": "", "replacements": "", "result": "PASS"}, {"event": "FRO", "duration_min": 142, "working_min": 142, "idle_min": 14, "start_time": "2026-01-05 15:13:12", "failures": "", "replacements": "", "result": "PASS"}, {"event": "FFT", "duration_min": 23, "working_min": 23, "idle_min": 14, "start_time": "2026-01-05 17:49:36", "failures": "", "replacements": "", "result": "PASS"}], "DR14G-141": [{"event": "PRETEST", "duration_min": 13, "working_min": 13, "idle_min": 0, "start_time": "2026-01-05 14:41:56", "failures": "", "replacements": "", "result": "PASS"}, {"event": "FAT", "duration_min": 30, "working_min": 30, "idle_min": 189, "start_time": "2026-01-05 18:04:13", "failures": "", "replacements": "", "result": "PASS"}, {"event": "FRO", "duration_min": 143, "working_min": 71, "idle_min": 14, "start_time": "2026-01-05 18:48:25", "failures": "", "replacements": "", "result": "PASS"}, {"event": "FFT", "duration_min": 23, "working_min": 23, "idle_min": 826, "start_time": "2026-01-06 10:57:28", "failures": "", "replacements": "", "result": "PASS"}], "DR14G-142": [{"event": "PRETEST", "duration_min": 14, "working_min": 14, "idle_min": 0, "start_time": "2026-01-05 18:26:02", "failures": "", "replacements": "", "result": "PASS"}], "DR14G-143": [{"event": "PRETEST", "duration_min": 11, "working_min": 11, "idle_min": 0, "start_time": "2026-01-05 18:32:00", "failures": "-> [CHECKPOINT FAIL] GPU, ARC ASIC FIRMWARE UPDATE [arc_asic_fw_update]", "replacements": "Replaced: PCIe Linking Board\nS7TRB3A3A251031080 -> S7TRB3A3A251031069", "result": "FAIL"}, {"event": "PRETEST", "duration_min": 5, "working_min": 5, "idle_min": 835, "start_time": "2026-01-06 08:38:34", "failures": "", "replacements": "", "result": "PASS"}, {"event": "FAT", "duration_min": 30, "working_min": 30, "idle_min": 16, "start_time": "2026-01-06 09:00:00", "failures": "", "replacements": "", "result": "PASS"}, {"event": "FRO", "duration_min": 81, "working_min": 81, "idle_min": 13, "start_time": "2026-01-06 09:43:52", "failures": "2026-01-06 11:05:04,905 - ERROR - [FT_BURNIN][FAIL@] FT_BURNIN test NOT Pass!\n-> [CHECKPOINT FAIL] GPU, TT UBB FUNC BURNIN TEST [tt_ft_ubb_test_burnin]", "replacements": "Replaced: BASEBOARD,S7T UBB-3\nT38S7TBA0090548000B -> T38S7TBA00905480021", "result": "FAIL"}, {"event": "PRETEST", "duration_min": 4, "working_min": 4, "idle_min": 133, "start_time": "2026-01-06 13:17:53", "failures": "", "replacements": "", "result": "PASS"}, {"event": "FAT", "duration_min": 30, "working_min": 30, "idle_min": 17, "start_time": "2026-01-06 13:38:55", "failures": "", "replacements": "", "result": "PASS"}, {"event": "FRO", "duration_min": 142, "working_min": 142, "idle_min": 47, "start_time": "2026-01-06 14:56:38", "failures": "", "replacements": "", "result": "PASS"}], "DR14G-144": [{"event": "FAT", "duration_min": 10, "working_min": 0, "idle_min": 0, "start_time": "2026-01-05 20:06:45", "failures": "2026-01-05 20:16:38,422 - ERROR - [ARC_BMC_SDCARD_CHECK][FAIL@] The result of sdcard check test: FAIL, err msg: no sdcard detect\n-> [CHECKPOINT FAIL] BMC, ARC BMC SDCARD CHECK [arc_bmc_sdcard_check]", "replacements": "", "result": "FAIL"}, {"event": "FAT", "duration_min": 18, "working_min": 18, "idle_min": 819, "start_time": "2026-01-06 09:56:10", "failures": "2026-01-06 10:13:39,743 - ERROR - [FT_ETH_STRESS][FAIL@] FT_ETH_STRESS test NOT Pass!\n-> [CHECKPOINT FAIL] GPU, TT UBB FUNC ETH STRESS TEST [tt_ft_ubb_eth_stress_test]", "replacements": "", "result": "FAIL"}, {"event": "FAT", "duration_min": 31, "working_min": 31, "idle_min": 181, "start_time": "2026-01-06 13:15:46", "failures": "", "replacements": "", "result": "PASS"}, {"event": "FRO", "duration_min": 149, "working_min": 149, "idle_min": 33, "start_time": "2026-01-06 14:20:39", "failures": "", "replacements": "", "result": "PASS"}, {"event": "FFT", "duration_min": 40, "working_min": 40, "idle_min": 13, "start_time": "2026-01-06 17:03:08", "failures": "", "replacements": "", "result": "PASS"}], "DR14G-145": [{"event": "PRETEST", "duration_min": 13, "working_min": 13, "idle_min": 0, "start_time": "2026-01-06 12:02:57", "failures": "", "replacements": "", "result": "PASS"}, {"event": "FAT", "duration_min": 30, "working_min": 30, "idle_min": 17, "start_time": "2026-01-06 12:33:10", "failures": "", "replacements": "", "result": "PASS"}, {"event": "FRO", "duration_min": 145, "working_min": 145, "idle_min": 13, "start_time": "2026-01-06 13:17:08", "failures": "", "replacements": "", "result": "PASS"}, {"event": "FFT", "duration_min": 36, "working_min": 36, "idle_min": 33, "start_time": "2026-01-06 16:15:55", "failures": "", "replacements": "", "result": "PASS"}, {"event": "FQA", "duration_min": 15, "working_min": 15, "idle_min": 14, "start_time": "2026-01-06 17:06:54", "failures": "", "replacements": "", "result": "PASS"}], "DR14G-146": [{"event": "PRETEST", "duration_min": 13, "working_min": 13, "idle_min": 0, "start_time": "2026-01-06 16:13:50", "failures": "", "replacements": "", "result": "PASS"}]};
+        const categoryLists = {"first_pass": ["DR14G-136", "DR14G-137", "DR14G-139", "DR14G-141", "DR14G-145"], "pass": ["DR14G-144"], "wip": ["DR14G-138", "DR14G-142", "DR14G-143", "DR14G-146"], "unknown": []};
+        const systems = Object.keys(timelineData).sort();
+        const grossExampleHtml = decodeBase64("PHN0cm9uZz5FeGFtcGxlOiBEUjE0Ry0xMzY8L3N0cm9uZz48YnI+PHNwYW4gc3R5bGU9J2NvbG9yOiM2NDc0OGI7IGZvbnQtc2l6ZToxMnB4Oyc+U3RhcnQ6IDAxLTA1IDExOjUzIHwgRW5kOiAwMS0wNSAxNzo0MTwvc3Bhbj48YnI+PGRpdiBzdHlsZT0nbWFyZ2luLXRvcDo4cHg7IHBhZGRpbmc6OHB4OyBiYWNrZ3JvdW5kOiNmMWY1Zjk7IGJvcmRlci1yYWRpdXM6NHB4Oyc+4oCiIE1vbiAwMS0wNTogPHN0cm9uZz41aCA0OG08L3N0cm9uZz48L2Rpdj48ZGl2IHN0eWxlPSdtYXJnaW4tdG9wOjVweDsgdGV4dC1hbGlnbjpyaWdodDsnPjwvZGl2Pg==");
+        const fpyListHtml = decodeBase64("PGRpdiBzdHlsZT0ibWF4LWhlaWdodDoyMDBweDsgb3ZlcmZsb3cteTphdXRvOyBib3JkZXI6MXB4IHNvbGlkICNlMmU4ZjA7IHBhZGRpbmc6MTBweDsgYm9yZGVyLXJhZGl1czo0cHg7Ij48dGFibGUgc3R5bGU9IndpZHRoOjEwMCU7IGZvbnQtc2l6ZToxM3B4OyI+PHRyPjx0ZCBzdHlsZT0icGFkZGluZzo0cHg7IGJvcmRlci1ib3R0b206MXB4IHNvbGlkICNmMWY1Zjk7Ij5EUjE0Ry0xMzc8L3RkPjx0ZCBzdHlsZT0icGFkZGluZzo0cHg7IGJvcmRlci1ib3R0b206MXB4IHNvbGlkICNmMWY1Zjk7IHRleHQtYWxpZ246cmlnaHQ7IGZvbnQtd2VpZ2h0OmJvbGQ7IGNvbG9yOiMwNTk2Njk7Ij40aCAxbTwvdGQ+PC90cj48dHI+PHRkIHN0eWxlPSJwYWRkaW5nOjRweDsgYm9yZGVyLWJvdHRvbToxcHggc29saWQgI2YxZjVmOTsiPkRSMTRHLTEzOTwvdGQ+PHRkIHN0eWxlPSJwYWRkaW5nOjRweDsgYm9yZGVyLWJvdHRvbToxcHggc29saWQgI2YxZjVmOTsgdGV4dC1hbGlnbjpyaWdodDsgZm9udC13ZWlnaHQ6Ym9sZDsgY29sb3I6IzA1OTY2OTsiPjRoIDE0bTwvdGQ+PC90cj48dHI+PHRkIHN0eWxlPSJwYWRkaW5nOjRweDsgYm9yZGVyLWJvdHRvbToxcHggc29saWQgI2YxZjVmOTsiPkRSMTRHLTE0NTwvdGQ+PHRkIHN0eWxlPSJwYWRkaW5nOjRweDsgYm9yZGVyLWJvdHRvbToxcHggc29saWQgI2YxZjVmOTsgdGV4dC1hbGlnbjpyaWdodDsgZm9udC13ZWlnaHQ6Ym9sZDsgY29sb3I6IzA1OTY2OTsiPjVoIDE4bTwvdGQ+PC90cj48dHI+PHRkIHN0eWxlPSJwYWRkaW5nOjRweDsgYm9yZGVyLWJvdHRvbToxcHggc29saWQgI2YxZjVmOTsiPkRSMTRHLTEzNjwvdGQ+PHRkIHN0eWxlPSJwYWRkaW5nOjRweDsgYm9yZGVyLWJvdHRvbToxcHggc29saWQgI2YxZjVmOTsgdGV4dC1hbGlnbjpyaWdodDsgZm9udC13ZWlnaHQ6Ym9sZDsgY29sb3I6IzA1OTY2OTsiPjVoIDQ4bTwvdGQ+PC90cj48dHI+PHRkIHN0eWxlPSJwYWRkaW5nOjRweDsgYm9yZGVyLWJvdHRvbToxcHggc29saWQgI2YxZjVmOTsiPkRSMTRHLTE0MTwvdGQ+PHRkIHN0eWxlPSJwYWRkaW5nOjRweDsgYm9yZGVyLWJvdHRvbToxcHggc29saWQgI2YxZjVmOTsgdGV4dC1hbGlnbjpyaWdodDsgZm9udC13ZWlnaHQ6Ym9sZDsgY29sb3I6IzA1OTY2OTsiPjhoIDM4bTwvdGQ+PC90cj48L3RhYmxlPjwvZGl2Pg==");
+        
+        // KPI Definitions for Modal
+        const kpiDefinitions = {
+            'throughput': {
+                title: 'Throughput (Weekly)',
+                content: `
+                    <div class="kpi-def-block">
+                        <div class="kpi-def-title">Calculation</div>
+                        (Completed Units / Total Days in Dataset) * 7
+                    </div>
+                    <div class="kpi-def-block">
+                        <div class="kpi-def-title">Logic</div>
+                        Estimates your weekly production capacity based on the timespan of the logs you uploaded. Only counts systems with a final "PASS" (First-Pass or Recovered).
+                    </div>`
+            },
+            'fpy_runtime': {
+                title: 'Avg Assembly Runtime (FPY)',
+                content: `
+                    <div class="kpi-def-block">
+                        <div class="kpi-def-title">Calculation</div>
+                        Average Assembly Runtime within working hours for First-Pass units.
+                    </div>
+                    <div class="kpi-def-block">
+                        <div class="kpi-def-title">System Breakdown (Sorted by Time)</div>
+                        ` + fpyListHtml + `
+                    </div>`
+            },
+            'downtime': {
+                title: 'Avg Downtime per Failure',
+                content: `
+                    <div class="kpi-def-block">
+                        <div class="kpi-def-title">Calculation</div>
+                        Sum(Gap Duration immediately following a FAIL event) / Total Failure Count
+                    </div>
+                    <div class="kpi-def-block">
+                        <div class="kpi-def-title">Logic</div>
+                        Measures the average "dead time" (gap) that occurs right after a test fails. This indicates how long the unit typically sits idle waiting for debug or a retry after a failure.
+                    </div>`
+            },
+            'net': {
+                title: 'Avg Test Runtime',
+                content: `
+                    <div class="kpi-def-block">
+                        <div class="kpi-def-title">Calculation</div>
+                        Sum of all active test event durations.
+                    </div>
+                    <div class="kpi-def-block">
+                        <div class="kpi-def-title">Example</div>
+                        - Test A: 10 mins<br>
+                        - (Idle Gap: 5 hours)<br>
+                        - Test B: 10 mins<br>
+                        = <strong>20 mins Net Active Time</strong>
+                    </div>`
+            },
+            'gross': {
+                title: 'Avg Assembly Runtime (APY)',
+                content: `
+                    <div class="kpi-def-block">
+                        <div class="kpi-def-title">Calculation</div>
+                        Total duration falling within shift hours (8:00 - 20:00).
+                    </div>
+                    <div class="kpi-def-block">
+                        <div class="kpi-def-title">Logic</div>
+                        Average runtime for <strong>ALL</strong> completed units (both First-Pass and Recovered), filtered by shift hours.
+                    </div>
+                    <div class="kpi-def-block">
+                        <div class="kpi-def-title">Real Data Example</div>
+                        ` + grossExampleHtml + `
+                    </div>`
+            }
+        };
+
+        function decodeBase64(str) {
+            try { return decodeURIComponent(atob(str).split('').map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)).join('')); }
+            catch(e) { return str; }
+        }
+
+        function switchTab(tabName, btn) {
+            document.querySelectorAll('.view').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.btn').forEach(el => el.classList.remove('active'));
+            document.getElementById(tabName).classList.add('active');
+            btn.classList.add('active');
+            if (tabName === 'detailed' && systems.length > 0) { renderDetailedTimeline(document.getElementById('system-selector').value || systems[0]); }
+        }
+
+        function showKpiInfo(type) {
+            const def = kpiDefinitions[type];
+            if(def) {
+                document.getElementById('infoModalHeader').textContent = def.title;
+                document.getElementById('infoModalContent').innerHTML = def.content;
+                document.getElementById('infoModal').classList.add('active');
+            }
+        }
+        function closeInfoModal() { document.getElementById('infoModal').classList.remove('active'); }
+        document.getElementById('infoModal').addEventListener('click', function(e) { if (e.target === this) closeInfoModal(); });
+
+        function showFailureDetail(eventName, failuresB64, replB64) {
+            document.getElementById('infoModalHeader').textContent = 'Event Details: ' + eventName;
+            const fail = decodeBase64(failuresB64) || '(No failures)';
+            const repl = decodeBase64(replB64) || '(No replacements)';
+            const content = '<div class="modal-section"><div class="modal-label">Failures</div><div class="modal-content">' + fail + '</div></div>' +
+                            '<div class="modal-section"><div class="modal-label" style="color:#d97706">Replacements</div><div class="modal-content" style="background:#fffbeb; color:#92400e;">' + repl + '</div></div>';
+            document.getElementById('infoModalContent').innerHTML = content;
+            document.getElementById('infoModal').classList.add('active');
+        }
+        
+        function showSystemList(title, listKey) {
+            document.getElementById('listModalHeader').textContent = title;
+            const list = categoryLists[listKey] || [];
+            if (list.length === 0) {
+                document.getElementById('listModalContent').innerHTML = '<p style="color:#666; font-style:italic;">No systems in this category.</p>';
+            } else {
+                let html = '<ul style="list-style: none; padding: 0;">';
+                list.forEach(sys => {
+                    html += '<li style="padding: 8px 12px; border-bottom: 1px solid #eee; display:flex; justify-content:space-between; align-items:center;">' + 
+                            '<span style="font-weight:500;">' + sys + '</span>' +
+                            '<button onclick="jumpToSystem(\'' + sys + '\')" style="padding:4px 8px; font-size:12px; border:1px solid #ccc; background:#fff; border-radius:4px; cursor:pointer;">View</button>' +
+                            '</li>';
+                });
+                html += '</ul>';
+                document.getElementById('listModalContent').innerHTML = html;
+            }
+            document.getElementById('listModal').classList.add('active');
+        }
+        function closeListModal() { document.getElementById('listModal').classList.remove('active'); }
+        document.getElementById('listModal').addEventListener('click', function(e) { if (e.target === this) closeListModal(); });
+
+        function jumpToSystem(sysName) {
+            closeListModal();
+            switchTab('timeline', document.querySelector('.controls .btn:first-child'));
+            const el = document.querySelector('.sys[data-system="' + sysName + '"]');
+            if (el) {
+                el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                el.style.border = '2px solid #0066cc';
+                setTimeout(() => { el.style.border = '1px solid #e2e8f0'; }, 2000);
+            }
+        }
+
+        document.addEventListener('keydown', function(e) { 
+            if (e.key === 'Escape') { closeInfoModal(); closeListModal(); }
+        });
+
+        function renderDetailedTimeline(systemName) {
+            const events = timelineData[systemName];
+            if (!events) return;
+            let html = '<table style="width: 100%; border-collapse: collapse; font-size: 14px;"><tr style="background: #1e3a5f; color: white;"><th style="padding: 11px;">Event</th><th style="padding: 11px;">Duration</th><th style="padding: 11px;">Net Active Time</th><th style="padding: 11px;">Failures</th><th style="padding: 11px;">Replacements</th></tr>';
+            events.forEach(evt => {
+                const dur = evt.duration_min + 'm';
+                const work = (evt.working_min || 0) + 'm';
+                html += '<tr style="background: #f8fafc;"><td style="padding: 11px; border: 1px solid #e2e8f0;">'+evt.event+'</td><td style="padding: 11px; border: 1px solid #e2e8f0;">'+dur+'</td><td style="padding: 11px; border: 1px solid #e2e8f0; color:#0284c7; font-weight:600;">'+work+'</td><td style="padding: 11px; border: 1px solid #e2e8f0;">'+(evt.failures||'-')+'</td><td style="padding: 11px; border: 1px solid #e2e8f0; color:#d97706; font-weight:500;">'+(evt.replacements||'-')+'</td></tr>';
+            });
+            html += '</table>';
+            document.getElementById('detailed-content').innerHTML = html;
+        }
+        
+        if (systems.length > 0) { document.getElementById('system-selector').value = systems[0]; }
+    </script>
+</body>
+</html>

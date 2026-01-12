@@ -1,0 +1,717 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manufacturing Yield Dashboard V1.6</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1e2a3a 0%, #2d3e50 100%);
+            color: #e8e8e8; padding: 15px; min-height: 100vh;
+        }
+        .container { max-width: 1900px; margin: 0 auto; }
+        h1 { text-align: center; color: #4fc3f7; margin-bottom: 20px; font-size: 2em; text-shadow: 2px 2px 4px rgba(0,0,0,0.3); }
+        .row { display: flex; gap: 15px; margin-bottom: 15px; }
+        .section { background: rgba(44, 62, 80, 0.9); border-radius: 10px; padding: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.3); margin-bottom: 15px; }
+        .half { flex: 1; min-width: 0; }
+        .section-title { color: #4fc3f7; font-size: 1.4em; margin-bottom: 12px; border-bottom: 2px solid #4fc3f7; padding-bottom: 6px; }
+        .controls { display: flex; gap: 15px; margin-bottom: 12px; flex-wrap: wrap; }
+        .control-group { flex: 1; min-width: 180px; }
+        label { display: block; color: #b0c4de; margin-bottom: 6px; font-weight: 500; font-size: 0.9em; }
+        select, button { width: 100%; padding: 8px; background: #34495e; color: #e8e8e8; border: 1px solid #4fc3f7; border-radius: 5px; font-size: 13px; cursor: pointer; transition: all 0.3s; }
+        select:hover, button:hover { background: #3d566e; border-color: #81d4fa; }
+        select:focus { outline: none; border-color: #29b6f6; box-shadow: 0 0 8px rgba(79, 195, 247, 0.3); }
+        .chart-container { background: #2c3e50; border-radius: 8px; padding: 12px; margin-top: 10px; height: 280px; }
+        canvas { max-width: 100%; max-height: 260px !important; }
+        .heatmap-container { overflow-x: auto; margin-top: 10px; max-height: 400px; }
+        .heatmap-table { width: 100%; border-collapse: collapse; background: #2c3e50; border-radius: 8px; overflow: hidden; font-size: 12px; }
+        .heatmap-table th, .heatmap-table td { padding: 8px; text-align: center; border: 1px solid #34495e; }
+        .heatmap-table th { background: #1a252f; color: #4fc3f7; font-weight: 600; position: sticky; top: 0; }
+        .heatmap-table td { color: #e8e8e8; transition: all 0.2s; }
+        .heatmap-table td:hover { transform: scale(1.05); z-index: 10; box-shadow: 0 0 12px rgba(79, 195, 247, 0.5); }
+        .heatmap-cell { font-weight: bold; }
+        .summary-table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 13px; }
+        .summary-table th, .summary-table td { padding: 8px; text-align: left; border-bottom: 1px solid #34495e; }
+        .summary-table th { background: #1a252f; color: #4fc3f7; font-weight: 600; }
+        .summary-table tr:hover { background: #34495e; }
+        .no-data { text-align: center; color: #7f8c8d; padding: 30px; font-style: italic; font-size: 0.95em; }
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-top: 12px; }
+        .stat-card { background: linear-gradient(135deg, #34495e 0%, #2c3e50 100%); border-radius: 8px; padding: 12px; text-align: center; border: 1px solid #4fc3f7; transition: transform 0.2s, box-shadow 0.2s; }
+        .stat-card:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(79, 195, 247, 0.3); }
+        .stat-label { color: #b0c4de; font-size: 0.85em; font-weight: 500; margin-bottom: 6px; }
+        .stat-value { color: #4fc3f7; font-size: 1.6em; font-weight: bold; }
+        .x-axis-label-custom { text-align: center; color: #4fc3f7; font-size: 14px; font-weight: bold; margin-top: 10px; padding: 8px; }
+        .help-icon { display: inline-flex; margin-left: 12px; cursor: pointer; }
+        .help-icon-circle { width: 28px; height: 28px; border-radius: 50%; background: linear-gradient(135deg, #4fc3f7, #039be5); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: bold; transition: all .3s; box-shadow: 0 2px 8px rgba(79,195,247,.4); }
+        .help-icon:hover .help-icon-circle { background: linear-gradient(135deg, #81d4fa, #4fc3f7); transform: scale(1.15); box-shadow: 0 4px 12px rgba(79,195,247,.6); }
+        th[title] { cursor: help; }
+        th[title]:hover { background-color: rgba(79,195,247,.1); }
+        .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,.7); }
+        .modal-content { background-color: #2d3748; margin: 2% auto; padding: 30px; border-radius: 12px; width: 80%; max-width: 900px; max-height: 85vh; overflow-y: auto; color: #e8e8e8; box-shadow: 0 10px 40px rgba(0,0,0,.5); }
+        .close-button { color: #aaa; float: right; font-size: 28px; font-weight: bold; cursor: pointer; }
+        .close-button:hover { color: #4fc3f7; }
+        @media (max-width: 1200px) { .row { flex-direction: column; } .half { width: 100%; } }
+        @media (max-width: 768px) { h1 { font-size: 1.6em; } .controls { flex-direction: column; } .control-group { min-width: 100%; } .chart-container { height: 200px; } }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>WH UBB Builds</h1>
+        <div class="subtitle" style="text-align: center; color: #64748b; font-size: 1.1em; margin-top: -10px; margin-bottom: 20px;"> Manufacturing Yield Dashboard </div>
+
+        <div class="section">
+            <h2 class="section-title">Overall Statistics (All Builds)</h2>
+            <div class="stats-grid">
+                <div class="stat-card"><div class="stat-label">Total Units</div><div class="stat-value" id="statTotalUnits">-</div></div>
+                <div class="stat-card"><div class="stat-label">Passed (FPY)</div><div class="stat-value" id="statPassed">-</div></div>
+                <div class="stat-card"><div class="stat-label">Fixed</div><div class="stat-value" id="statFixed">-</div></div>
+                <div class="stat-card"><div class="stat-label">Failed</div><div class="stat-value" id="statFailed">-</div></div>
+                <div class="stat-card"><div class="stat-label">Overall FPY</div><div class="stat-value" id="statFPY">-</div></div>
+                <div class="stat-card"><div class="stat-label">Overall APY</div><div class="stat-value" id="statAPY">-</div></div>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="section half">
+                <h2 class="section-title">APY & FPY Trends</h2>
+                <div class="chart-container"><canvas id="yieldChart"></canvas></div>
+                <div class="x-axis-label-custom">Build Date</div>
+            </div>
+            <div class="section half">
+                <h2 class="section-title">Jira Trend Analysis</h2>
+                <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+                    <button id="btnAPY" onclick="switchTrendView('APY')" style="flex: 1; padding: 10px 15px; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 600; transition: all 0.3s; background: linear-gradient(135deg, #4fc3f7 0%, #039be5 100%); color: white; box-shadow: 0 2px 8px rgba(79, 195, 247, 0.3);"> APY Units </button>
+                    <button id="btnFPY" onclick="switchTrendView('FPY')" style="flex: 1; padding: 10px 15px; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 600; transition: all 0.3s; background: rgba(79, 195, 247, 0.15); color: #4fc3f7; border: 2px solid rgba(79, 195, 247, 0.5);"> FPY Units </button>
+                </div>
+                <div id="apySection" style="display: block;">
+                    <div class="controls">
+                        <div class="control-group">
+                            <label for="jiraTrendSelectAPY">
+                                <div style="margin-bottom: 15px; display: flex; gap: 10px; align-items: center;">
+                                    <label style="color: #4fc3f7; font-weight: bold; font-size: 12px;">Y-Axis Display:</label>
+                                    <button id="togglePercentUnits" style="padding: 4px 10px; width: 80px; text-align: center; background-color: #4fc3f7; color: #1a1f36; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 11px; transition: all 0.3s;">%</button>
+                                </div>
+                                Select Jira Entries (Cmd/Ctrl + Click):
+                            </label>
+                            <select id="jiraTrendSelectAPY" multiple size="4"></select>
+                        </div>
+                    </div>
+                    <div class="chart-container"><canvas id="jiraTrendChartAPY"></canvas></div>
+                </div>
+                <div id="fpySection" style="display: none;">
+                    <div class="controls">
+                        <div class="control-group">
+                            <div style="margin-bottom: 15px; display: flex; gap: 10px; align-items: center;">
+                                <label style="color: #4fc3f7; font-weight: bold; font-size: 12px;">Y-Axis Display:</label>
+                                <button id="togglePercentUnitsFPY" style="padding: 4px 10px; width: 80px; text-align: center; background-color: #4fc3f7; color: #1a1f36; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 11px; transition: all 0.3s;">%</button>
+                            </div>
+                            <label for="jiraTrendSelectFPY">Select Jira Entries (Cmd/Ctrl + Click):</label>
+                            <select id="jiraTrendSelectFPY" multiple size="4"></select>
+                        </div>
+                    </div>
+                    <div class="chart-container"><canvas id="jiraTrendChartFPY"></canvas></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="section half">
+                <h2 class="section-title">Component Failure Heatmaps<span class="help-icon" onclick="showHeatmapGuide()" title="Click for detailed guide"><div class="help-icon-circle">?</div></span></h2>
+                
+                <div style="margin-bottom: 12px; border-bottom: 1px solid #34495e; padding-bottom: 10px;">
+                    <label for="heatmapBuildFilter" style="color: #4fc3f7; font-weight: bold;">Filter Heatmap by Build Date (Cmd/Ctrl+Click)</label>
+                    <select id="heatmapBuildFilter" multiple size="3" style="width: 100%; padding: 6px; background: #2c3e50; color: #e8e8e8; border: 1px solid #34495e;"></select>
+                    <div style="font-size: 11px; color: #7f8c8d; margin-top: 4px;">* Select none to show all dates</div>
+                </div>
+
+                <div class="controls">
+                    <div class="control-group">
+                        <label for="heatmapJiraSelect">Jira Entry:</label>
+                        <select id="heatmapJiraSelect"></select>
+                    </div>
+                    <div class="control-group">
+                        <label for="heatmapTypeSelect">Heatmap Type:</label>
+                        <select id="heatmapTypeSelect"></select>
+                    </div>
+                </div>
+                <div id="heatmapDisplay" class="heatmap-container"></div>
+            </div>
+
+            <div class="section half">
+                <h2 class="section-title">Jira Summary Statistics</h2>
+                <div style="margin-bottom: 12px;">
+                    <label for="buildFilterSelect" style="color: #4fc3f7; font-weight: bold;">Filter by Build Date (Cmd/Ctrl+Click)</label>
+                    <select id="buildFilterSelect" multiple size="4" style="width: 100%; padding: 6px; background: #2c3e50; color: #e8e8e8; border: 1px solid #34495e;"></select>
+                </div>
+                <div style="overflow-x: auto; max-height: 450px; overflow-y: auto;">
+                    <table class="summary-table" id="summaryTable"></table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
+    <script>
+        const overallStats = {"totalUnits": 1002, "passed": 744, "fixed": 38, "failed": 201, "overallAPY": 78.04, "overallFPY": 74.25};
+        const jiraMapping = {"QUAN-210": "DRAM training failure - EM", "QUAN-788": "PCIe link downgrade detected", "QUAN-900": "The BMC firmware update Not Pass!", "QUAN-897": "ARC_BMC_I2C_FP_TEST: STM32 (#U4, bus 6 addr 0x12) I2C access fails (CC=0xff)", "QUAN-898": "ARC_BMC_CPLD_CHECK: PDB-M1 PSU3_ACOK_N / PSU3_PWRGD_N failure", "QUAN-758": "Unable to retrieve PCIe link speed and lane width information for E1.S-2 NVMe drive", "QUAN-829": "[UBB*][ASIC6] Chip: C* asic version execute failed", "WAIVED - QUAN-841": "QSFP-DD module failure", "QUAN-841": "QSFP-DD module failure", "QUAN-937": "Unable to Connect the HCA's through the link", "QUAN-938": "Empty DIMM slots", "QUAN-176": "DRAM EC# error failed at 14G speed.", "Need Jira for E99 SCRIPT_ERROR": "Error Code: E99 | SCRIPT_ERROR", "Need Jira for E12 I2C Fail": "Error Code: E12 | I2C Fail", "Need Jira for E14 BITCOMPARE_FAIL": "Error Code: E14 | BITCOMPARE_FAIL", "Need Jira for ECX Failure": "Error Code: ECX | DDR_TEST_FAIL_ALL", "QUAN-946": "Error Code: E32-0 | ETH_IDLE_FAIL-QSFP", "QUAN-858": "Error Code: E32-4 | ETH_IDLE_FAIL-IN-UBB", "QUAN-948": "Error Code: E32-3 | ETH_IDLE_FAIL-ST", "QUAN-947": "Error Code: E32-1 | ETH_IDLE_FAIL-LT with Retimer", "QUAN-949": "Error Code: E32-2 | ETH_IDLE_FAIL-LT without Retimer", "QUAN-284": "FT_BURNIN - tmon_max exceeds the threshold", "QUAN-825": "UBB ASIC Power Rail Fail", "QUAN-704": "Observed \"ASIC is not alive\" in CPLD without PWRGD failure.", "WAIVED - QUAN-856": "Sensors with invalid readings detected.\nTEMP_UBB1_RT2: 0 degrees C", "QUAN-856": "Sensors has Zero readings for ASIC TEMP and Power", "QUAN-785": "E33 CRC/BER error observed during ETH_STREAM_APP_FAIL.", "QUAN-787": "PCIe RX error over threshold", "WAIVED - Missing OCP in the system": "Missing OCP in the system", "QUAN-802": "UBB ETH Retimer Power Rail Fail", "Done - QUAN-651": "Unable to send RAW command to PHY# address", "QUAN-651": "Unable to send RAW command to PHY# address", "QUAN-401": "DDR Training failure - ET", "QUAN-860": "Set A3 Mode Fail: Read 0xffffffff from ARC scratch", "QUAN-235": "TIMEOUT_PG_RCV issues were observed during the ETH idle test", "QUAN-177": "BER issues were observed during the ETH stream test", "QUAN-88": "QSFP loopback module related failures. Investigation Needed", "QUAN-204": "DUMMY PACKET issues were observed during the ETH idle test", "QUAN-784": "ETH_STREAM_APP_FAIL - Uncorrected codewords"};
+        const jiraUrls = {"QUAN-210": "https://ext-tenstorrent.atlassian.net/browse/QUAN-210", "QUAN-788": "https://ext-tenstorrent.atlassian.net/browse/QUAN-788", "QUAN-900": "https://ext-tenstorrent.atlassian.net/browse/QUAN-900", "QUAN-897": "https://ext-tenstorrent.atlassian.net/browse/QUAN-897", "QUAN-898": "https://ext-tenstorrent.atlassian.net/browse/QUAN-898", "QUAN-758": "https://ext-tenstorrent.atlassian.net/browse/QUAN-758", "QUAN-829": "https://ext-tenstorrent.atlassian.net/browse/QUAN-829", "WAIVED - QUAN-841": "https://ext-tenstorrent.atlassian.net/browse/QUAN-841", "QUAN-841": "https://ext-tenstorrent.atlassian.net/browse/QUAN-841", "QUAN-937": "https://ext-tenstorrent.atlassian.net/browse/QUAN-937", "QUAN-938": "https://ext-tenstorrent.atlassian.net/browse/QUAN-938", "QUAN-176": "https://ext-tenstorrent.atlassian.net/browse/QUAN-176", "QUAN-946": "https://ext-tenstorrent.atlassian.net/browse/QUAN-946", "QUAN-858": "https://ext-tenstorrent.atlassian.net/browse/QUAN-858", "QUAN-948": "https://ext-tenstorrent.atlassian.net/browse/QUAN-948", "QUAN-947": "https://ext-tenstorrent.atlassian.net/browse/QUAN-947", "QUAN-949": "https://ext-tenstorrent.atlassian.net/browse/QUAN-949", "QUAN-284": "https://ext-tenstorrent.atlassian.net/browse/QUAN-284", "QUAN-825": "https://ext-tenstorrent.atlassian.net/browse/QUAN-825", "QUAN-704": "https://ext-tenstorrent.atlassian.net/browse/QUAN-704", "WAIVED - QUAN-856": "https://ext-tenstorrent.atlassian.net/browse/QUAN-856", "QUAN-856": "https://ext-tenstorrent.atlassian.net/browse/QUAN-856", "QUAN-785": "https://ext-tenstorrent.atlassian.net/browse/QUAN-785", "QUAN-787": "https://ext-tenstorrent.atlassian.net/browse/QUAN-787", "QUAN-802": "https://ext-tenstorrent.atlassian.net/browse/QUAN-802", "Done - QUAN-651": "https://ext-tenstorrent.atlassian.net/browse/QUAN-651", "QUAN-651": "https://ext-tenstorrent.atlassian.net/browse/QUAN-651", "QUAN-401": "https://ext-tenstorrent.atlassian.net/browse/QUAN-401", "QUAN-860": "https://ext-tenstorrent.atlassian.net/browse/QUAN-860", "QUAN-235": "https://ext-tenstorrent.atlassian.net/browse/QUAN-235", "QUAN-177": "https://ext-tenstorrent.atlassian.net/browse/QUAN-177", "QUAN-88": "https://ext-tenstorrent.atlassian.net/browse/QUAN-88", "QUAN-204": "https://ext-tenstorrent.atlassian.net/browse/QUAN-204", "QUAN-784": "https://ext-tenstorrent.atlassian.net/browse/QUAN-784"};
+        const yieldData = [{"buildDate": "2025-10-29", "totalUnits": 55, "fpy": 38.18, "apy": 72.73, "passed": 21, "fixed": 19, "failed": 15}, {"buildDate": "2025-11-14", "totalUnits": 58, "fpy": 72.41, "apy": 74.14, "passed": 42, "fixed": 1, "failed": 15}, {"buildDate": "2025-11-19", "totalUnits": 150, "fpy": 78.0, "apy": 78.0, "passed": 117, "fixed": 0, "failed": 33}, {"buildDate": "2025-11-26", "totalUnits": 200, "fpy": 69.5, "apy": 71.0, "passed": 139, "fixed": 3, "failed": 40}, {"buildDate": "2025-12-03", "totalUnits": 199, "fpy": 83.42, "apy": 89.95, "passed": 166, "fixed": 13, "failed": 19}, {"buildDate": "2025-12-10", "totalUnits": 70, "fpy": 70.0, "apy": 72.86, "passed": 49, "fixed": 2, "failed": 19}, {"buildDate": "2025-12-17", "totalUnits": 270, "fpy": 77.78, "apy": 77.78, "passed": 210, "fixed": 0, "failed": 60}];
+        const jiraTrendDataAPY = [{"buildDate": "2025-10-29", "jira": "Missing mylar caused boot failure", "count": 0}, {"buildDate": "2025-10-29", "jira": "Need Jira for QSFP DD LED Failure", "count": 0}, {"buildDate": "2025-10-29", "jira": "Need Jira for U176 TMP75 Failure", "count": 0}, {"buildDate": "2025-10-29", "jira": "QUAN-176", "count": 0}, {"buildDate": "2025-10-29", "jira": "QUAN-177", "count": 2}, {"buildDate": "2025-10-29", "jira": "QUAN-204", "count": 1}, {"buildDate": "2025-10-29", "jira": "QUAN-210", "count": 1}, {"buildDate": "2025-10-29", "jira": "QUAN-235", "count": 2}, {"buildDate": "2025-10-29", "jira": "QUAN-284", "count": 0}, {"buildDate": "2025-10-29", "jira": "QUAN-401", "count": 0}, {"buildDate": "2025-10-29", "jira": "QUAN-651", "count": 1}, {"buildDate": "2025-10-29", "jira": "QUAN-704", "count": 0}, {"buildDate": "2025-10-29", "jira": "QUAN-784", "count": 0}, {"buildDate": "2025-10-29", "jira": "QUAN-785", "count": 5}, {"buildDate": "2025-10-29", "jira": "QUAN-787", "count": 0}, {"buildDate": "2025-10-29", "jira": "QUAN-788", "count": 0}, {"buildDate": "2025-10-29", "jira": "QUAN-802", "count": 0}, {"buildDate": "2025-10-29", "jira": "QUAN-825", "count": 0}, {"buildDate": "2025-10-29", "jira": "QUAN-858", "count": 1}, {"buildDate": "2025-10-29", "jira": "QUAN-860", "count": 0}, {"buildDate": "2025-10-29", "jira": "QUAN-88", "count": 2}, {"buildDate": "2025-10-29", "jira": "QUAN-946", "count": 0}, {"buildDate": "2025-10-29", "jira": "QUAN-948", "count": 0}, {"buildDate": "2025-10-29", "jira": "QUAN-949", "count": 18}, {"buildDate": "2025-11-14", "jira": "Missing mylar caused boot failure", "count": 0}, {"buildDate": "2025-11-14", "jira": "Need Jira for QSFP DD LED Failure", "count": 0}, {"buildDate": "2025-11-14", "jira": "Need Jira for U176 TMP75 Failure", "count": 0}, {"buildDate": "2025-11-14", "jira": "QUAN-176", "count": 10}, {"buildDate": "2025-11-14", "jira": "QUAN-177", "count": 2}, {"buildDate": "2025-11-14", "jira": "QUAN-204", "count": 0}, {"buildDate": "2025-11-14", "jira": "QUAN-210", "count": 1}, {"buildDate": "2025-11-14", "jira": "QUAN-235", "count": 1}, {"buildDate": "2025-11-14", "jira": "QUAN-284", "count": 0}, {"buildDate": "2025-11-14", "jira": "QUAN-401", "count": 0}, {"buildDate": "2025-11-14", "jira": "QUAN-651", "count": 0}, {"buildDate": "2025-11-14", "jira": "QUAN-704", "count": 0}, {"buildDate": "2025-11-14", "jira": "QUAN-784", "count": 0}, {"buildDate": "2025-11-14", "jira": "QUAN-785", "count": 0}, {"buildDate": "2025-11-14", "jira": "QUAN-787", "count": 0}, {"buildDate": "2025-11-14", "jira": "QUAN-788", "count": 0}, {"buildDate": "2025-11-14", "jira": "QUAN-802", "count": 0}, {"buildDate": "2025-11-14", "jira": "QUAN-825", "count": 0}, {"buildDate": "2025-11-14", "jira": "QUAN-858", "count": 0}, {"buildDate": "2025-11-14", "jira": "QUAN-860", "count": 0}, {"buildDate": "2025-11-14", "jira": "QUAN-88", "count": 0}, {"buildDate": "2025-11-14", "jira": "QUAN-946", "count": 0}, {"buildDate": "2025-11-14", "jira": "QUAN-948", "count": 0}, {"buildDate": "2025-11-14", "jira": "QUAN-949", "count": 4}, {"buildDate": "2025-11-19", "jira": "Missing mylar caused boot failure", "count": 0}, {"buildDate": "2025-11-19", "jira": "Need Jira for QSFP DD LED Failure", "count": 1}, {"buildDate": "2025-11-19", "jira": "Need Jira for U176 TMP75 Failure", "count": 0}, {"buildDate": "2025-11-19", "jira": "QUAN-176", "count": 6}, {"buildDate": "2025-11-19", "jira": "QUAN-177", "count": 1}, {"buildDate": "2025-11-19", "jira": "QUAN-204", "count": 1}, {"buildDate": "2025-11-19", "jira": "QUAN-210", "count": 7}, {"buildDate": "2025-11-19", "jira": "QUAN-235", "count": 3}, {"buildDate": "2025-11-19", "jira": "QUAN-284", "count": 1}, {"buildDate": "2025-11-19", "jira": "QUAN-401", "count": 0}, {"buildDate": "2025-11-19", "jira": "QUAN-651", "count": 0}, {"buildDate": "2025-11-19", "jira": "QUAN-704", "count": 1}, {"buildDate": "2025-11-19", "jira": "QUAN-784", "count": 0}, {"buildDate": "2025-11-19", "jira": "QUAN-785", "count": 2}, {"buildDate": "2025-11-19", "jira": "QUAN-787", "count": 0}, {"buildDate": "2025-11-19", "jira": "QUAN-788", "count": 0}, {"buildDate": "2025-11-19", "jira": "QUAN-802", "count": 0}, {"buildDate": "2025-11-19", "jira": "QUAN-825", "count": 1}, {"buildDate": "2025-11-19", "jira": "QUAN-858", "count": 0}, {"buildDate": "2025-11-19", "jira": "QUAN-860", "count": 0}, {"buildDate": "2025-11-19", "jira": "QUAN-88", "count": 1}, {"buildDate": "2025-11-19", "jira": "QUAN-946", "count": 0}, {"buildDate": "2025-11-19", "jira": "QUAN-948", "count": 6}, {"buildDate": "2025-11-19", "jira": "QUAN-949", "count": 6}, {"buildDate": "2025-11-26", "jira": "Missing mylar caused boot failure", "count": 0}, {"buildDate": "2025-11-26", "jira": "Need Jira for QSFP DD LED Failure", "count": 0}, {"buildDate": "2025-11-26", "jira": "Need Jira for U176 TMP75 Failure", "count": 1}, {"buildDate": "2025-11-26", "jira": "QUAN-176", "count": 14}, {"buildDate": "2025-11-26", "jira": "QUAN-177", "count": 4}, {"buildDate": "2025-11-26", "jira": "QUAN-204", "count": 0}, {"buildDate": "2025-11-26", "jira": "QUAN-210", "count": 7}, {"buildDate": "2025-11-26", "jira": "QUAN-235", "count": 3}, {"buildDate": "2025-11-26", "jira": "QUAN-284", "count": 0}, {"buildDate": "2025-11-26", "jira": "QUAN-401", "count": 0}, {"buildDate": "2025-11-26", "jira": "QUAN-651", "count": 0}, {"buildDate": "2025-11-26", "jira": "QUAN-704", "count": 0}, {"buildDate": "2025-11-26", "jira": "QUAN-784", "count": 1}, {"buildDate": "2025-11-26", "jira": "QUAN-785", "count": 1}, {"buildDate": "2025-11-26", "jira": "QUAN-787", "count": 0}, {"buildDate": "2025-11-26", "jira": "QUAN-788", "count": 0}, {"buildDate": "2025-11-26", "jira": "QUAN-802", "count": 0}, {"buildDate": "2025-11-26", "jira": "QUAN-825", "count": 4}, {"buildDate": "2025-11-26", "jira": "QUAN-858", "count": 1}, {"buildDate": "2025-11-26", "jira": "QUAN-860", "count": 0}, {"buildDate": "2025-11-26", "jira": "QUAN-88", "count": 1}, {"buildDate": "2025-11-26", "jira": "QUAN-946", "count": 0}, {"buildDate": "2025-11-26", "jira": "QUAN-948", "count": 0}, {"buildDate": "2025-11-26", "jira": "QUAN-949", "count": 9}, {"buildDate": "2025-12-03", "jira": "Missing mylar caused boot failure", "count": 0}, {"buildDate": "2025-12-03", "jira": "Need Jira for QSFP DD LED Failure", "count": 0}, {"buildDate": "2025-12-03", "jira": "Need Jira for U176 TMP75 Failure", "count": 0}, {"buildDate": "2025-12-03", "jira": "QUAN-176", "count": 6}, {"buildDate": "2025-12-03", "jira": "QUAN-177", "count": 0}, {"buildDate": "2025-12-03", "jira": "QUAN-204", "count": 0}, {"buildDate": "2025-12-03", "jira": "QUAN-210", "count": 0}, {"buildDate": "2025-12-03", "jira": "QUAN-235", "count": 0}, {"buildDate": "2025-12-03", "jira": "QUAN-284", "count": 1}, {"buildDate": "2025-12-03", "jira": "QUAN-401", "count": 0}, {"buildDate": "2025-12-03", "jira": "QUAN-651", "count": 0}, {"buildDate": "2025-12-03", "jira": "QUAN-704", "count": 0}, {"buildDate": "2025-12-03", "jira": "QUAN-784", "count": 0}, {"buildDate": "2025-12-03", "jira": "QUAN-785", "count": 2}, {"buildDate": "2025-12-03", "jira": "QUAN-787", "count": 1}, {"buildDate": "2025-12-03", "jira": "QUAN-788", "count": 0}, {"buildDate": "2025-12-03", "jira": "QUAN-802", "count": 0}, {"buildDate": "2025-12-03", "jira": "QUAN-825", "count": 1}, {"buildDate": "2025-12-03", "jira": "QUAN-858", "count": 0}, {"buildDate": "2025-12-03", "jira": "QUAN-860", "count": 0}, {"buildDate": "2025-12-03", "jira": "QUAN-88", "count": 0}, {"buildDate": "2025-12-03", "jira": "QUAN-946", "count": 2}, {"buildDate": "2025-12-03", "jira": "QUAN-948", "count": 4}, {"buildDate": "2025-12-03", "jira": "QUAN-949", "count": 2}, {"buildDate": "2025-12-10", "jira": "Missing mylar caused boot failure", "count": 0}, {"buildDate": "2025-12-10", "jira": "Need Jira for QSFP DD LED Failure", "count": 0}, {"buildDate": "2025-12-10", "jira": "Need Jira for U176 TMP75 Failure", "count": 0}, {"buildDate": "2025-12-10", "jira": "QUAN-176", "count": 3}, {"buildDate": "2025-12-10", "jira": "QUAN-177", "count": 0}, {"buildDate": "2025-12-10", "jira": "QUAN-204", "count": 0}, {"buildDate": "2025-12-10", "jira": "QUAN-210", "count": 0}, {"buildDate": "2025-12-10", "jira": "QUAN-235", "count": 0}, {"buildDate": "2025-12-10", "jira": "QUAN-284", "count": 0}, {"buildDate": "2025-12-10", "jira": "QUAN-401", "count": 0}, {"buildDate": "2025-12-10", "jira": "QUAN-651", "count": 0}, {"buildDate": "2025-12-10", "jira": "QUAN-704", "count": 0}, {"buildDate": "2025-12-10", "jira": "QUAN-784", "count": 0}, {"buildDate": "2025-12-10", "jira": "QUAN-785", "count": 3}, {"buildDate": "2025-12-10", "jira": "QUAN-787", "count": 0}, {"buildDate": "2025-12-10", "jira": "QUAN-788", "count": 0}, {"buildDate": "2025-12-10", "jira": "QUAN-802", "count": 0}, {"buildDate": "2025-12-10", "jira": "QUAN-825", "count": 1}, {"buildDate": "2025-12-10", "jira": "QUAN-858", "count": 0}, {"buildDate": "2025-12-10", "jira": "QUAN-860", "count": 0}, {"buildDate": "2025-12-10", "jira": "QUAN-88", "count": 0}, {"buildDate": "2025-12-10", "jira": "QUAN-946", "count": 0}, {"buildDate": "2025-12-10", "jira": "QUAN-948", "count": 2}, {"buildDate": "2025-12-10", "jira": "QUAN-949", "count": 12}, {"buildDate": "2025-12-17", "jira": "Missing mylar caused boot failure", "count": 0}, {"buildDate": "2025-12-17", "jira": "Need Jira for QSFP DD LED Failure", "count": 0}, {"buildDate": "2025-12-17", "jira": "Need Jira for U176 TMP75 Failure", "count": 0}, {"buildDate": "2025-12-17", "jira": "QUAN-176", "count": 14}, {"buildDate": "2025-12-17", "jira": "QUAN-177", "count": 0}, {"buildDate": "2025-12-17", "jira": "QUAN-204", "count": 0}, {"buildDate": "2025-12-17", "jira": "QUAN-210", "count": 5}, {"buildDate": "2025-12-17", "jira": "QUAN-235", "count": 0}, {"buildDate": "2025-12-17", "jira": "QUAN-284", "count": 1}, {"buildDate": "2025-12-17", "jira": "QUAN-401", "count": 0}, {"buildDate": "2025-12-17", "jira": "QUAN-651", "count": 0}, {"buildDate": "2025-12-17", "jira": "QUAN-704", "count": 2}, {"buildDate": "2025-12-17", "jira": "QUAN-784", "count": 0}, {"buildDate": "2025-12-17", "jira": "QUAN-785", "count": 0}, {"buildDate": "2025-12-17", "jira": "QUAN-787", "count": 0}, {"buildDate": "2025-12-17", "jira": "QUAN-788", "count": 4}, {"buildDate": "2025-12-17", "jira": "QUAN-802", "count": 1}, {"buildDate": "2025-12-17", "jira": "QUAN-825", "count": 3}, {"buildDate": "2025-12-17", "jira": "QUAN-858", "count": 2}, {"buildDate": "2025-12-17", "jira": "QUAN-860", "count": 0}, {"buildDate": "2025-12-17", "jira": "QUAN-88", "count": 0}, {"buildDate": "2025-12-17", "jira": "QUAN-946", "count": 1}, {"buildDate": "2025-12-17", "jira": "QUAN-948", "count": 4}, {"buildDate": "2025-12-17", "jira": "QUAN-949", "count": 26}];
+        const jiraTrendDataFPY = [{"buildDate": "2025-10-29", "jira": "Missing mylar caused boot failure", "count": 0}, {"buildDate": "2025-10-29", "jira": "Need Jira for QSFP DD LED Failure", "count": 0}, {"buildDate": "2025-10-29", "jira": "Need Jira for U176 TMP75 Failure", "count": 0}, {"buildDate": "2025-10-29", "jira": "QUAN-176", "count": 4}, {"buildDate": "2025-10-29", "jira": "QUAN-177", "count": 2}, {"buildDate": "2025-10-29", "jira": "QUAN-204", "count": 1}, {"buildDate": "2025-10-29", "jira": "QUAN-210", "count": 4}, {"buildDate": "2025-10-29", "jira": "QUAN-235", "count": 5}, {"buildDate": "2025-10-29", "jira": "QUAN-284", "count": 1}, {"buildDate": "2025-10-29", "jira": "QUAN-401", "count": 0}, {"buildDate": "2025-10-29", "jira": "QUAN-651", "count": 5}, {"buildDate": "2025-10-29", "jira": "QUAN-704", "count": 0}, {"buildDate": "2025-10-29", "jira": "QUAN-784", "count": 0}, {"buildDate": "2025-10-29", "jira": "QUAN-785", "count": 7}, {"buildDate": "2025-10-29", "jira": "QUAN-787", "count": 0}, {"buildDate": "2025-10-29", "jira": "QUAN-788", "count": 0}, {"buildDate": "2025-10-29", "jira": "QUAN-802", "count": 0}, {"buildDate": "2025-10-29", "jira": "QUAN-825", "count": 0}, {"buildDate": "2025-10-29", "jira": "QUAN-858", "count": 1}, {"buildDate": "2025-10-29", "jira": "QUAN-860", "count": 0}, {"buildDate": "2025-10-29", "jira": "QUAN-88", "count": 2}, {"buildDate": "2025-10-29", "jira": "QUAN-946", "count": 0}, {"buildDate": "2025-10-29", "jira": "QUAN-948", "count": 0}, {"buildDate": "2025-10-29", "jira": "QUAN-949", "count": 18}, {"buildDate": "2025-11-14", "jira": "Missing mylar caused boot failure", "count": 0}, {"buildDate": "2025-11-14", "jira": "Need Jira for QSFP DD LED Failure", "count": 0}, {"buildDate": "2025-11-14", "jira": "Need Jira for U176 TMP75 Failure", "count": 0}, {"buildDate": "2025-11-14", "jira": "QUAN-176", "count": 10}, {"buildDate": "2025-11-14", "jira": "QUAN-177", "count": 2}, {"buildDate": "2025-11-14", "jira": "QUAN-204", "count": 0}, {"buildDate": "2025-11-14", "jira": "QUAN-210", "count": 1}, {"buildDate": "2025-11-14", "jira": "QUAN-235", "count": 1}, {"buildDate": "2025-11-14", "jira": "QUAN-284", "count": 0}, {"buildDate": "2025-11-14", "jira": "QUAN-401", "count": 0}, {"buildDate": "2025-11-14", "jira": "QUAN-651", "count": 0}, {"buildDate": "2025-11-14", "jira": "QUAN-704", "count": 0}, {"buildDate": "2025-11-14", "jira": "QUAN-784", "count": 0}, {"buildDate": "2025-11-14", "jira": "QUAN-785", "count": 2}, {"buildDate": "2025-11-14", "jira": "QUAN-787", "count": 0}, {"buildDate": "2025-11-14", "jira": "QUAN-788", "count": 0}, {"buildDate": "2025-11-14", "jira": "QUAN-802", "count": 0}, {"buildDate": "2025-11-14", "jira": "QUAN-825", "count": 0}, {"buildDate": "2025-11-14", "jira": "QUAN-858", "count": 0}, {"buildDate": "2025-11-14", "jira": "QUAN-860", "count": 0}, {"buildDate": "2025-11-14", "jira": "QUAN-88", "count": 0}, {"buildDate": "2025-11-14", "jira": "QUAN-946", "count": 0}, {"buildDate": "2025-11-14", "jira": "QUAN-948", "count": 0}, {"buildDate": "2025-11-14", "jira": "QUAN-949", "count": 4}, {"buildDate": "2025-11-19", "jira": "Missing mylar caused boot failure", "count": 2}, {"buildDate": "2025-11-19", "jira": "Need Jira for QSFP DD LED Failure", "count": 1}, {"buildDate": "2025-11-19", "jira": "Need Jira for U176 TMP75 Failure", "count": 0}, {"buildDate": "2025-11-19", "jira": "QUAN-176", "count": 6}, {"buildDate": "2025-11-19", "jira": "QUAN-177", "count": 1}, {"buildDate": "2025-11-19", "jira": "QUAN-204", "count": 1}, {"buildDate": "2025-11-19", "jira": "QUAN-210", "count": 7}, {"buildDate": "2025-11-19", "jira": "QUAN-235", "count": 3}, {"buildDate": "2025-11-19", "jira": "QUAN-284", "count": 1}, {"buildDate": "2025-11-19", "jira": "QUAN-401", "count": 0}, {"buildDate": "2025-11-19", "jira": "QUAN-651", "count": 0}, {"buildDate": "2025-11-19", "jira": "QUAN-704", "count": 1}, {"buildDate": "2025-11-19", "jira": "QUAN-784", "count": 0}, {"buildDate": "2025-11-19", "jira": "QUAN-785", "count": 2}, {"buildDate": "2025-11-19", "jira": "QUAN-787", "count": 0}, {"buildDate": "2025-11-19", "jira": "QUAN-788", "count": 0}, {"buildDate": "2025-11-19", "jira": "QUAN-802", "count": 0}, {"buildDate": "2025-11-19", "jira": "QUAN-825", "count": 1}, {"buildDate": "2025-11-19", "jira": "QUAN-858", "count": 0}, {"buildDate": "2025-11-19", "jira": "QUAN-860", "count": 0}, {"buildDate": "2025-11-19", "jira": "QUAN-88", "count": 1}, {"buildDate": "2025-11-19", "jira": "QUAN-946", "count": 0}, {"buildDate": "2025-11-19", "jira": "QUAN-948", "count": 6}, {"buildDate": "2025-11-19", "jira": "QUAN-949", "count": 6}, {"buildDate": "2025-11-26", "jira": "Missing mylar caused boot failure", "count": 0}, {"buildDate": "2025-11-26", "jira": "Need Jira for QSFP DD LED Failure", "count": 0}, {"buildDate": "2025-11-26", "jira": "Need Jira for U176 TMP75 Failure", "count": 1}, {"buildDate": "2025-11-26", "jira": "QUAN-176", "count": 14}, {"buildDate": "2025-11-26", "jira": "QUAN-177", "count": 4}, {"buildDate": "2025-11-26", "jira": "QUAN-204", "count": 0}, {"buildDate": "2025-11-26", "jira": "QUAN-210", "count": 7}, {"buildDate": "2025-11-26", "jira": "QUAN-235", "count": 4}, {"buildDate": "2025-11-26", "jira": "QUAN-284", "count": 1}, {"buildDate": "2025-11-26", "jira": "QUAN-401", "count": 0}, {"buildDate": "2025-11-26", "jira": "QUAN-651", "count": 0}, {"buildDate": "2025-11-26", "jira": "QUAN-704", "count": 0}, {"buildDate": "2025-11-26", "jira": "QUAN-784", "count": 1}, {"buildDate": "2025-11-26", "jira": "QUAN-785", "count": 1}, {"buildDate": "2025-11-26", "jira": "QUAN-787", "count": 0}, {"buildDate": "2025-11-26", "jira": "QUAN-788", "count": 0}, {"buildDate": "2025-11-26", "jira": "QUAN-802", "count": 0}, {"buildDate": "2025-11-26", "jira": "QUAN-825", "count": 4}, {"buildDate": "2025-11-26", "jira": "QUAN-858", "count": 1}, {"buildDate": "2025-11-26", "jira": "QUAN-860", "count": 0}, {"buildDate": "2025-11-26", "jira": "QUAN-88", "count": 1}, {"buildDate": "2025-11-26", "jira": "QUAN-946", "count": 0}, {"buildDate": "2025-11-26", "jira": "QUAN-948", "count": 0}, {"buildDate": "2025-11-26", "jira": "QUAN-949", "count": 9}, {"buildDate": "2025-12-03", "jira": "Missing mylar caused boot failure", "count": 0}, {"buildDate": "2025-12-03", "jira": "Need Jira for QSFP DD LED Failure", "count": 0}, {"buildDate": "2025-12-03", "jira": "Need Jira for U176 TMP75 Failure", "count": 0}, {"buildDate": "2025-12-03", "jira": "QUAN-176", "count": 14}, {"buildDate": "2025-12-03", "jira": "QUAN-177", "count": 0}, {"buildDate": "2025-12-03", "jira": "QUAN-204", "count": 0}, {"buildDate": "2025-12-03", "jira": "QUAN-210", "count": 2}, {"buildDate": "2025-12-03", "jira": "QUAN-235", "count": 0}, {"buildDate": "2025-12-03", "jira": "QUAN-284", "count": 1}, {"buildDate": "2025-12-03", "jira": "QUAN-401", "count": 1}, {"buildDate": "2025-12-03", "jira": "QUAN-651", "count": 0}, {"buildDate": "2025-12-03", "jira": "QUAN-704", "count": 0}, {"buildDate": "2025-12-03", "jira": "QUAN-784", "count": 0}, {"buildDate": "2025-12-03", "jira": "QUAN-785", "count": 2}, {"buildDate": "2025-12-03", "jira": "QUAN-787", "count": 1}, {"buildDate": "2025-12-03", "jira": "QUAN-788", "count": 0}, {"buildDate": "2025-12-03", "jira": "QUAN-802", "count": 0}, {"buildDate": "2025-12-03", "jira": "QUAN-825", "count": 1}, {"buildDate": "2025-12-03", "jira": "QUAN-858", "count": 0}, {"buildDate": "2025-12-03", "jira": "QUAN-860", "count": 1}, {"buildDate": "2025-12-03", "jira": "QUAN-88", "count": 0}, {"buildDate": "2025-12-03", "jira": "QUAN-946", "count": 2}, {"buildDate": "2025-12-03", "jira": "QUAN-948", "count": 4}, {"buildDate": "2025-12-03", "jira": "QUAN-949", "count": 2}, {"buildDate": "2025-12-10", "jira": "Missing mylar caused boot failure", "count": 0}, {"buildDate": "2025-12-10", "jira": "Need Jira for QSFP DD LED Failure", "count": 0}, {"buildDate": "2025-12-10", "jira": "Need Jira for U176 TMP75 Failure", "count": 0}, {"buildDate": "2025-12-10", "jira": "QUAN-176", "count": 3}, {"buildDate": "2025-12-10", "jira": "QUAN-177", "count": 0}, {"buildDate": "2025-12-10", "jira": "QUAN-204", "count": 0}, {"buildDate": "2025-12-10", "jira": "QUAN-210", "count": 0}, {"buildDate": "2025-12-10", "jira": "QUAN-235", "count": 0}, {"buildDate": "2025-12-10", "jira": "QUAN-284", "count": 0}, {"buildDate": "2025-12-10", "jira": "QUAN-401", "count": 0}, {"buildDate": "2025-12-10", "jira": "QUAN-651", "count": 0}, {"buildDate": "2025-12-10", "jira": "QUAN-704", "count": 0}, {"buildDate": "2025-12-10", "jira": "QUAN-784", "count": 0}, {"buildDate": "2025-12-10", "jira": "QUAN-785", "count": 3}, {"buildDate": "2025-12-10", "jira": "QUAN-787", "count": 0}, {"buildDate": "2025-12-10", "jira": "QUAN-788", "count": 0}, {"buildDate": "2025-12-10", "jira": "QUAN-802", "count": 0}, {"buildDate": "2025-12-10", "jira": "QUAN-825", "count": 1}, {"buildDate": "2025-12-10", "jira": "QUAN-858", "count": 0}, {"buildDate": "2025-12-10", "jira": "QUAN-860", "count": 0}, {"buildDate": "2025-12-10", "jira": "QUAN-88", "count": 0}, {"buildDate": "2025-12-10", "jira": "QUAN-946", "count": 0}, {"buildDate": "2025-12-10", "jira": "QUAN-948", "count": 2}, {"buildDate": "2025-12-10", "jira": "QUAN-949", "count": 12}, {"buildDate": "2025-12-17", "jira": "Missing mylar caused boot failure", "count": 0}, {"buildDate": "2025-12-17", "jira": "Need Jira for QSFP DD LED Failure", "count": 0}, {"buildDate": "2025-12-17", "jira": "Need Jira for U176 TMP75 Failure", "count": 0}, {"buildDate": "2025-12-17", "jira": "QUAN-176", "count": 14}, {"buildDate": "2025-12-17", "jira": "QUAN-177", "count": 0}, {"buildDate": "2025-12-17", "jira": "QUAN-204", "count": 0}, {"buildDate": "2025-12-17", "jira": "QUAN-210", "count": 5}, {"buildDate": "2025-12-17", "jira": "QUAN-235", "count": 0}, {"buildDate": "2025-12-17", "jira": "QUAN-284", "count": 1}, {"buildDate": "2025-12-17", "jira": "QUAN-401", "count": 0}, {"buildDate": "2025-12-17", "jira": "QUAN-651", "count": 0}, {"buildDate": "2025-12-17", "jira": "QUAN-704", "count": 2}, {"buildDate": "2025-12-17", "jira": "QUAN-784", "count": 0}, {"buildDate": "2025-12-17", "jira": "QUAN-785", "count": 0}, {"buildDate": "2025-12-17", "jira": "QUAN-787", "count": 0}, {"buildDate": "2025-12-17", "jira": "QUAN-788", "count": 4}, {"buildDate": "2025-12-17", "jira": "QUAN-802", "count": 1}, {"buildDate": "2025-12-17", "jira": "QUAN-825", "count": 3}, {"buildDate": "2025-12-17", "jira": "QUAN-858", "count": 2}, {"buildDate": "2025-12-17", "jira": "QUAN-860", "count": 0}, {"buildDate": "2025-12-17", "jira": "QUAN-88", "count": 0}, {"buildDate": "2025-12-17", "jira": "QUAN-946", "count": 1}, {"buildDate": "2025-12-17", "jira": "QUAN-948", "count": 4}, {"buildDate": "2025-12-17", "jira": "QUAN-949", "count": 26}];
+        const jiraSummaryData = [{"jira": "QUAN-949", "fpyUnits": 77, "recovered": 0, "apyUnits": 77, "fpyRate": 7.68, "apyRate": 7.68}, {"jira": "QUAN-176", "fpyUnits": 65, "recovered": 13, "apyUnits": 52, "fpyRate": 6.49, "apyRate": 5.19}, {"jira": "QUAN-210", "fpyUnits": 26, "recovered": 5, "apyUnits": 21, "fpyRate": 2.59, "apyRate": 2.1}, {"jira": "QUAN-785", "fpyUnits": 17, "recovered": 4, "apyUnits": 13, "fpyRate": 1.7, "apyRate": 1.3}, {"jira": "QUAN-948", "fpyUnits": 16, "recovered": 0, "apyUnits": 16, "fpyRate": 1.6, "apyRate": 1.6}, {"jira": "QUAN-235", "fpyUnits": 13, "recovered": 4, "apyUnits": 9, "fpyRate": 1.3, "apyRate": 0.9}, {"jira": "QUAN-825", "fpyUnits": 10, "recovered": 0, "apyUnits": 10, "fpyRate": 1.0, "apyRate": 1.0}, {"jira": "QUAN-177", "fpyUnits": 9, "recovered": 0, "apyUnits": 9, "fpyRate": 0.9, "apyRate": 0.9}, {"jira": "QUAN-284", "fpyUnits": 5, "recovered": 2, "apyUnits": 3, "fpyRate": 0.5, "apyRate": 0.3}, {"jira": "QUAN-651", "fpyUnits": 5, "recovered": 4, "apyUnits": 1, "fpyRate": 0.5, "apyRate": 0.1}, {"jira": "QUAN-788", "fpyUnits": 4, "recovered": 0, "apyUnits": 4, "fpyRate": 0.4, "apyRate": 0.4}, {"jira": "QUAN-858", "fpyUnits": 4, "recovered": 0, "apyUnits": 4, "fpyRate": 0.4, "apyRate": 0.4}, {"jira": "QUAN-88", "fpyUnits": 4, "recovered": 0, "apyUnits": 4, "fpyRate": 0.4, "apyRate": 0.4}, {"jira": "QUAN-704", "fpyUnits": 3, "recovered": 0, "apyUnits": 3, "fpyRate": 0.3, "apyRate": 0.3}, {"jira": "QUAN-946", "fpyUnits": 3, "recovered": 0, "apyUnits": 3, "fpyRate": 0.3, "apyRate": 0.3}, {"jira": "Missing mylar caused boot failure", "fpyUnits": 2, "recovered": 2, "apyUnits": 0, "fpyRate": 0.2, "apyRate": 0.0}, {"jira": "QUAN-204", "fpyUnits": 2, "recovered": 0, "apyUnits": 2, "fpyRate": 0.2, "apyRate": 0.2}, {"jira": "Need Jira for QSFP DD LED Failure", "fpyUnits": 1, "recovered": 0, "apyUnits": 1, "fpyRate": 0.1, "apyRate": 0.1}, {"jira": "Need Jira for U176 TMP75 Failure", "fpyUnits": 1, "recovered": 0, "apyUnits": 1, "fpyRate": 0.1, "apyRate": 0.1}, {"jira": "QUAN-401", "fpyUnits": 1, "recovered": 1, "apyUnits": 0, "fpyRate": 0.1, "apyRate": 0.0}, {"jira": "QUAN-784", "fpyUnits": 1, "recovered": 0, "apyUnits": 1, "fpyRate": 0.1, "apyRate": 0.1}, {"jira": "QUAN-787", "fpyUnits": 1, "recovered": 0, "apyUnits": 1, "fpyRate": 0.1, "apyRate": 0.1}, {"jira": "QUAN-802", "fpyUnits": 1, "recovered": 0, "apyUnits": 1, "fpyRate": 0.1, "apyRate": 0.1}, {"jira": "QUAN-860", "fpyUnits": 1, "recovered": 1, "apyUnits": 0, "fpyRate": 0.1, "apyRate": 0.0}];
+        const buildDatesForFilter = ["2025-12-17", "2025-12-10", "2025-12-03", "2025-11-26", "2025-11-19", "2025-11-14", "2025-10-29"];
+        const allHeatmaps = {"UBB_ASIC": {"QUAN-176": {"UBB_1": {"A1": {"2025-12-03": 1}, "A2": {"2025-12-03": 1, "2025-11-26": 1}, "A3": {"2025-11-19": 1, "2025-10-29": 1}, "A4": {"2025-12-17": 1, "2025-12-03": 1, "2025-11-26": 2}, "A5": {"2025-12-17": 1}, "A6": {"2025-11-26": 3}, "A7": {"2025-12-10": 1}, "A8": {"2025-11-19": 2}}, "UBB_2": {"A1": {}, "A2": {"2025-12-17": 2}, "A3": {"2025-12-03": 6, "2025-11-26": 1, "2025-11-14": 1, "2025-10-29": 1}, "A4": {"2025-11-14": 2}, "A5": {"2025-12-03": 2, "2025-12-10": 1, "2025-11-14": 2}, "A6": {"2025-12-17": 1, "2025-12-03": 1, "2025-11-26": 1, "2025-11-19": 1}, "A7": {"2025-12-17": 1, "2025-12-03": 1, "2025-10-29": 1}, "A8": {"2025-12-17": 1, "2025-11-26": 1}}, "UBB_3": {"A1": {"2025-11-19": 3}, "A2": {"2025-11-14": 1}, "A3": {"2025-10-29": 1}, "A4": {"2025-12-03": 1, "2025-11-26": 1}, "A5": {"2025-11-26": 1, "2025-11-19": 1, "2025-11-14": 1}, "A6": {"2025-12-10": 1, "2025-11-26": 8}, "A7": {"2025-12-17": 1, "2025-12-03": 1, "2025-10-29": 1}, "A8": {"2025-12-17": 1}}, "UBB_4": {"A1": {"2025-11-26": 1, "2025-11-14": 1}, "A2": {"2025-11-26": 1}, "A3": {"2025-12-03": 1, "2025-11-14": 2, "2025-10-29": 1}, "A4": {"2025-12-17": 1}, "A5": {}, "A6": {"2025-12-17": 1, "2025-12-03": 1}, "A7": {"2025-12-17": 1, "2025-11-26": 2, "2025-11-14": 1, "2025-10-29": 1}, "A8": {"2025-12-17": 2, "2025-12-03": 1}}}, "QUAN-177": {"UBB_1": {"A1": {"2025-11-14": 1}, "A2": {}, "A3": {}, "A4": {}, "A5": {"2025-11-19": 1, "2025-10-29": 1}, "A6": {}, "A7": {}, "A8": {}}, "UBB_2": {"A1": {}, "A2": {}, "A3": {}, "A4": {"2025-11-26": 2}, "A5": {}, "A6": {}, "A7": {}, "A8": {}}, "UBB_3": {"A1": {"2025-11-14": 1}, "A2": {}, "A3": {}, "A4": {"2025-11-26": 1}, "A5": {"2025-10-29": 2}, "A6": {}, "A7": {}, "A8": {}}, "UBB_4": {"A1": {}, "A2": {}, "A3": {}, "A4": {"2025-11-26": 1}, "A5": {"2025-10-29": 1}, "A6": {}, "A7": {}, "A8": {}}}, "QUAN-204": {"UBB_1": {"A1": {"2025-11-19": 1}, "A2": {}, "A3": {}, "A4": {}, "A5": {}, "A6": {}, "A7": {}, "A8": {}}, "UBB_2": {"A1": {}, "A2": {}, "A3": {}, "A4": {"2025-10-29": 1}, "A5": {}, "A6": {}, "A7": {}, "A8": {}}, "UBB_3": {"A1": {}, "A2": {}, "A3": {}, "A4": {}, "A5": {}, "A6": {}, "A7": {}, "A8": {}}, "UBB_4": {"A1": {}, "A2": {}, "A3": {}, "A4": {"2025-10-29": 1}, "A5": {}, "A6": {}, "A7": {}, "A8": {}}}, "QUAN-210": {"UBB_1": {"A1": {}, "A2": {}, "A3": {"2025-11-26": 1, "2025-11-19": 1}, "A4": {}, "A5": {"2025-11-26": 1}, "A6": {"2025-11-19": 1}, "A7": {}, "A8": {"2025-12-17": 1, "2025-11-19": 1}}, "UBB_2": {"A1": {}, "A2": {"2025-12-17": 1, "2025-11-19": 1}, "A3": {"2025-12-03": 1}, "A4": {"2025-12-17": 1, "2025-11-14": 1, "2025-10-29": 1}, "A5": {}, "A6": {}, "A7": {"2025-12-17": 1}, "A8": {"2025-11-26": 1, "2025-10-29": 1}}, "UBB_3": {"A1": {"2025-12-03": 1}, "A2": {"2025-11-26": 1}, "A3": {"2025-10-29": 1}, "A4": {}, "A5": {"2025-11-26": 1}, "A6": {}, "A7": {"2025-11-19": 2}, "A8": {}}, "UBB_4": {"A1": {}, "A2": {}, "A3": {"2025-11-26": 1, "2025-10-29": 1}, "A4": {"2025-11-26": 1, "2025-11-19": 1}, "A5": {}, "A6": {}, "A7": {}, "A8": {"2025-12-17": 1}}}, "QUAN-235": {"UBB_1": {"A1": {}, "A2": {}, "A3": {}, "A4": {}, "A5": {}, "A6": {}, "A7": {}, "A8": {"2025-11-26": 1, "2025-10-29": 3}}, "UBB_2": {"A1": {"2025-11-19": 1}, "A2": {"2025-11-19": 1}, "A3": {}, "A4": {}, "A5": {}, "A6": {}, "A7": {}, "A8": {"2025-11-19": 1, "2025-10-29": 1}}, "UBB_3": {"A1": {}, "A2": {}, "A3": {}, "A4": {}, "A5": {}, "A6": {"2025-11-26": 1}, "A7": {"2025-11-14": 1}, "A8": {"2025-11-26": 1, "2025-11-14": 1, "2025-10-29": 2}}, "UBB_4": {"A1": {}, "A2": {}, "A3": {}, "A4": {}, "A5": {}, "A6": {"2025-11-26": 1}, "A7": {}, "A8": {"2025-11-19": 1, "2025-10-29": 1}}}, "QUAN-284": {"UBB_1": {"A1": {}, "A2": {"2025-11-26": 1}, "A3": {}, "A4": {}, "A5": {}, "A6": {}, "A7": {}, "A8": {}}, "UBB_2": {"A1": {}, "A2": {}, "A3": {}, "A4": {}, "A5": {}, "A6": {}, "A7": {}, "A8": {}}, "UBB_3": {"A1": {}, "A2": {}, "A3": {}, "A4": {"2025-12-03": 1}, "A5": {}, "A6": {}, "A7": {}, "A8": {}}, "UBB_4": {"A1": {}, "A2": {}, "A3": {}, "A4": {"2025-11-19": 1, "2025-10-29": 1}, "A5": {}, "A6": {}, "A7": {"2025-12-17": 1}, "A8": {}}}, "QUAN-401": {"UBB_1": {"A1": {}, "A2": {}, "A3": {}, "A4": {}, "A5": {}, "A6": {}, "A7": {}, "A8": {}}, "UBB_2": {"A1": {}, "A2": {}, "A3": {"2025-12-03": 1}, "A4": {}, "A5": {}, "A6": {}, "A7": {}, "A8": {}}, "UBB_3": {"A1": {}, "A2": {}, "A3": {}, "A4": {}, "A5": {}, "A6": {}, "A7": {}, "A8": {}}, "UBB_4": {"A1": {}, "A2": {}, "A3": {}, "A4": {}, "A5": {}, "A6": {}, "A7": {}, "A8": {}}}, "QUAN-704": {"UBB_1": {"A1": {}, "A2": {}, "A3": {}, "A4": {}, "A5": {}, "A6": {}, "A7": {}, "A8": {}}, "UBB_2": {"A1": {}, "A2": {"2025-12-17": 1}, "A3": {}, "A4": {"2025-12-17": 1}, "A5": {}, "A6": {}, "A7": {}, "A8": {}}, "UBB_3": {"A1": {}, "A2": {}, "A3": {}, "A4": {"2025-11-19": 1}, "A5": {}, "A6": {}, "A7": {}, "A8": {}}, "UBB_4": {"A1": {}, "A2": {}, "A3": {}, "A4": {}, "A5": {}, "A6": {}, "A7": {}, "A8": {}}}, "QUAN-784": {"UBB_1": {"A1": {}, "A2": {}, "A3": {}, "A4": {}, "A5": {}, "A6": {}, "A7": {}, "A8": {}}, "UBB_2": {"A1": {}, "A2": {}, "A3": {}, "A4": {}, "A5": {}, "A6": {}, "A7": {}, "A8": {}}, "UBB_3": {"A1": {}, "A2": {}, "A3": {}, "A4": {}, "A5": {}, "A6": {}, "A7": {}, "A8": {}}, "UBB_4": {"A1": {}, "A2": {}, "A3": {}, "A4": {"2025-11-26": 1}, "A5": {}, "A6": {}, "A7": {}, "A8": {}}}, "QUAN-785": {"UBB_1": {"A1": {"2025-12-03": 1}, "A2": {}, "A3": {}, "A4": {}, "A5": {}, "A6": {}, "A7": {}, "A8": {"2025-12-10": 1, "2025-11-19": 1, "2025-11-14": 2, "2025-10-29": 1}}, "UBB_2": {"A1": {}, "A2": {}, "A3": {}, "A4": {}, "A5": {}, "A6": {}, "A7": {}, "A8": {"2025-10-29": 3}}, "UBB_3": {"A1": {}, "A2": {}, "A3": {}, "A4": {}, "A5": {"2025-12-10": 1}, "A6": {}, "A7": {}, "A8": {"2025-12-10": 1, "2025-11-19": 1, "2025-11-14": 2, "2025-10-29": 1}}, "UBB_4": {"A1": {"2025-10-29": 1}, "A2": {}, "A3": {}, "A4": {"2025-11-26": 1}, "A5": {"2025-12-03": 1}, "A6": {}, "A7": {}, "A8": {"2025-10-29": 4}}}, "QUAN-787": {"UBB_1": {"A1": {}, "A2": {}, "A3": {}, "A4": {}, "A5": {}, "A6": {}, "A7": {}, "A8": {}}, "UBB_2": {"A1": {}, "A2": {}, "A3": {}, "A4": {}, "A5": {}, "A6": {}, "A7": {}, "A8": {}}, "UBB_3": {"A1": {}, "A2": {}, "A3": {}, "A4": {}, "A5": {}, "A6": {}, "A7": {}, "A8": {}}, "UBB_4": {"A1": {"2025-12-03": 1}, "A2": {}, "A3": {}, "A4": {}, "A5": {}, "A6": {}, "A7": {}, "A8": {}}}, "QUAN-788": {"UBB_1": {"A1": {}, "A2": {}, "A3": {}, "A4": {}, "A5": {}, "A6": {}, "A7": {}, "A8": {}}, "UBB_2": {"A1": {}, "A2": {}, "A3": {}, "A4": {}, "A5": {}, "A6": {}, "A7": {}, "A8": {}}, "UBB_3": {"A1": {"2025-12-17": 2}, "A2": {"2025-12-17": 1}, "A3": {}, "A4": {}, "A5": {}, "A6": {}, "A7": {}, "A8": {}}, "UBB_4": {"A1": {}, "A2": {"2025-12-17": 1}, "A3": {}, "A4": {}, "A5": {}, "A6": {}, "A7": {}, "A8": {}}}, "QUAN-825": {"UBB_1": {"A1": {}, "A2": {"2025-11-26": 1}, "A3": {}, "A4": {}, "A5": {}, "A6": {}, "A7": {}, "A8": {}}, "UBB_2": {"A1": {"2025-12-17": 1, "2025-11-19": 1}, "A2": {}, "A3": {}, "A4": {}, "A5": {"2025-12-17": 1}, "A6": {}, "A7": {"2025-12-17": 1}, "A8": {}}, "UBB_3": {"A1": {"2025-12-03": 1}, "A2": {"2025-12-03": 1}, "A3": {"2025-12-03": 1}, "A4": {"2025-12-03": 1}, "A5": {"2025-12-03": 1}, "A6": {"2025-12-03": 1}, "A7": {"2025-12-03": 1}, "A8": {"2025-12-03": 1}}, "UBB_4": {"A1": {}, "A2": {}, "A3": {}, "A4": {}, "A5": {"2025-12-10": 1}, "A6": {}, "A7": {}, "A8": {}}}, "QUAN-858": {"UBB_1": {"A1": {}, "A2": {}, "A3": {}, "A4": {}, "A5": {}, "A6": {}, "A7": {}, "A8": {}}, "UBB_2": {"A1": {}, "A2": {}, "A3": {}, "A4": {}, "A5": {}, "A6": {}, "A7": {}, "A8": {}}, "UBB_3": {"A1": {"2025-10-29": 1}, "A2": {}, "A3": {}, "A4": {}, "A5": {"2025-10-29": 1}, "A6": {"2025-12-17": 1}, "A7": {"2025-12-17": 1}, "A8": {}}, "UBB_4": {"A1": {"2025-10-29": 1}, "A2": {"2025-12-17": 1, "2025-11-26": 1}, "A3": {}, "A4": {}, "A5": {"2025-10-29": 1}, "A6": {"2025-12-17": 1, "2025-11-26": 1}, "A7": {}, "A8": {}}}, "QUAN-860": {"UBB_1": {"A1": {}, "A2": {}, "A3": {}, "A4": {}, "A5": {}, "A6": {}, "A7": {}, "A8": {}}, "UBB_2": {"A1": {}, "A2": {}, "A3": {"2025-12-03": 1}, "A4": {}, "A5": {}, "A6": {}, "A7": {}, "A8": {}}, "UBB_3": {"A1": {}, "A2": {}, "A3": {}, "A4": {}, "A5": {}, "A6": {}, "A7": {}, "A8": {}}, "UBB_4": {"A1": {}, "A2": {}, "A3": {}, "A4": {}, "A5": {}, "A6": {}, "A7": {}, "A8": {}}}, "QUAN-88": {"UBB_1": {"A1": {}, "A2": {}, "A3": {}, "A4": {}, "A5": {}, "A6": {}, "A7": {}, "A8": {}}, "UBB_2": {"A1": {}, "A2": {"2025-10-29": 2}, "A3": {}, "A4": {"2025-11-26": 1}, "A5": {}, "A6": {}, "A7": {}, "A8": {}}, "UBB_3": {"A1": {}, "A2": {}, "A3": {}, "A4": {}, "A5": {"2025-11-19": 1}, "A6": {}, "A7": {}, "A8": {}}, "UBB_4": {"A1": {}, "A2": {}, "A3": {}, "A4": {}, "A5": {}, "A6": {}, "A7": {}, "A8": {}}}, "QUAN-946": {"UBB_1": {"A1": {}, "A2": {}, "A3": {}, "A4": {}, "A5": {}, "A6": {}, "A7": {}, "A8": {}}, "UBB_2": {"A1": {}, "A2": {}, "A3": {}, "A4": {}, "A5": {}, "A6": {}, "A7": {}, "A8": {}}, "UBB_3": {"A1": {}, "A2": {}, "A3": {}, "A4": {"2025-12-03": 1}, "A5": {}, "A6": {}, "A7": {}, "A8": {}}, "UBB_4": {"A1": {"2025-12-03": 1}, "A2": {"2025-12-17": 1}, "A3": {}, "A4": {}, "A5": {}, "A6": {}, "A7": {}, "A8": {}}}, "QUAN-948": {"UBB_1": {"A1": {}, "A2": {}, "A3": {}, "A4": {}, "A5": {}, "A6": {}, "A7": {"2025-11-19": 1}, "A8": {"2025-12-03": 1}}, "UBB_2": {"A1": {}, "A2": {}, "A3": {}, "A4": {}, "A5": {}, "A6": {}, "A7": {"2025-11-19": 1}, "A8": {"2025-12-03": 1}}, "UBB_3": {"A1": {}, "A2": {}, "A3": {}, "A4": {}, "A5": {"2025-12-17": 3, "2025-11-19": 1}, "A6": {"2025-12-17": 1, "2025-12-10": 1, "2025-11-19": 1}, "A7": {"2025-12-03": 1}, "A8": {}}, "UBB_4": {"A1": {}, "A2": {}, "A3": {}, "A4": {}, "A5": {"2025-12-17": 3, "2025-11-19": 1}, "A6": {"2025-12-17": 1, "2025-12-10": 1, "2025-11-19": 1}, "A7": {"2025-12-03": 1}, "A8": {}}}, "QUAN-949": {"UBB_1": {"A1": {}, "A2": {}, "A3": {}, "A4": {}, "A5": {}, "A6": {}, "A7": {}, "A8": {"2025-12-17": 7, "2025-12-03": 1, "2025-12-10": 2, "2025-11-26": 3, "2025-11-19": 3, "2025-11-14": 1, "2025-10-29": 6}}, "UBB_2": {"A1": {}, "A2": {}, "A3": {}, "A4": {}, "A5": {}, "A6": {}, "A7": {}, "A8": {"2025-12-17": 6, "2025-12-10": 4, "2025-11-26": 1, "2025-11-14": 1, "2025-10-29": 6}}, "UBB_3": {"A1": {}, "A2": {}, "A3": {}, "A4": {}, "A5": {}, "A6": {}, "A7": {}, "A8": {"2025-12-17": 7, "2025-12-03": 1, "2025-12-10": 2, "2025-11-26": 3, "2025-11-19": 3, "2025-11-14": 1, "2025-10-29": 7}}, "UBB_4": {"A1": {}, "A2": {}, "A3": {}, "A4": {"2025-11-26": 1}, "A5": {}, "A6": {}, "A7": {}, "A8": {"2025-12-17": 6, "2025-12-10": 4, "2025-11-26": 1, "2025-11-14": 1, "2025-10-29": 7}}}}, "UBB_ETH": {"QUAN-177": {"UBB_1": {"ETH0": {}, "ETH1": {}, "ETH2": {}, "ETH3": {}, "ETH4": {"2025-11-14": 1}, "ETH5": {"2025-11-19": 1}, "ETH6": {"2025-10-29": 1}, "ETH7": {}, "ETH8": {}, "ETH9": {}, "ETH10": {}, "ETH11": {}, "ETH12": {}, "ETH13": {}, "ETH14": {}, "ETH15": {}}, "UBB_2": {"ETH0": {}, "ETH1": {}, "ETH2": {}, "ETH3": {}, "ETH4": {}, "ETH5": {}, "ETH6": {}, "ETH7": {}, "ETH8": {}, "ETH9": {"2025-11-26": 2}, "ETH10": {}, "ETH11": {}, "ETH12": {}, "ETH13": {}, "ETH14": {}, "ETH15": {}}, "UBB_3": {"ETH0": {}, "ETH1": {}, "ETH2": {}, "ETH3": {}, "ETH4": {}, "ETH5": {"2025-10-29": 1}, "ETH6": {"2025-10-29": 1}, "ETH7": {"2025-11-14": 1}, "ETH8": {}, "ETH9": {"2025-11-26": 1}, "ETH10": {}, "ETH11": {}, "ETH12": {}, "ETH13": {}, "ETH14": {}, "ETH15": {}}, "UBB_4": {"ETH0": {}, "ETH1": {}, "ETH2": {}, "ETH3": {}, "ETH4": {}, "ETH5": {"2025-10-29": 1}, "ETH6": {}, "ETH7": {}, "ETH8": {}, "ETH9": {"2025-11-26": 1}, "ETH10": {}, "ETH11": {}, "ETH12": {}, "ETH13": {}, "ETH14": {}, "ETH15": {}}}, "QUAN-204": {"UBB_1": {"ETH0": {}, "ETH1": {}, "ETH2": {}, "ETH3": {"2025-11-19": 1}, "ETH4": {}, "ETH5": {}, "ETH6": {}, "ETH7": {}, "ETH8": {}, "ETH9": {}, "ETH10": {}, "ETH11": {}, "ETH12": {}, "ETH13": {}, "ETH14": {}, "ETH15": {}}, "UBB_2": {"ETH0": {}, "ETH1": {}, "ETH2": {}, "ETH3": {"2025-10-29": 1}, "ETH4": {}, "ETH5": {}, "ETH6": {}, "ETH7": {}, "ETH8": {}, "ETH9": {}, "ETH10": {}, "ETH11": {}, "ETH12": {}, "ETH13": {}, "ETH14": {}, "ETH15": {}}, "UBB_3": {"ETH0": {}, "ETH1": {}, "ETH2": {}, "ETH3": {}, "ETH4": {}, "ETH5": {}, "ETH6": {}, "ETH7": {}, "ETH8": {}, "ETH9": {}, "ETH10": {}, "ETH11": {}, "ETH12": {}, "ETH13": {}, "ETH14": {}, "ETH15": {}}, "UBB_4": {"ETH0": {}, "ETH1": {}, "ETH2": {}, "ETH3": {"2025-10-29": 1}, "ETH4": {}, "ETH5": {}, "ETH6": {}, "ETH7": {}, "ETH8": {}, "ETH9": {}, "ETH10": {}, "ETH11": {}, "ETH12": {}, "ETH13": {}, "ETH14": {}, "ETH15": {}}}, "QUAN-235": {"UBB_1": {"ETH0": {}, "ETH1": {}, "ETH2": {}, "ETH3": {}, "ETH4": {}, "ETH5": {}, "ETH6": {}, "ETH7": {}, "ETH8": {"2025-11-26": 1, "2025-10-29": 3}, "ETH9": {}, "ETH10": {}, "ETH11": {}, "ETH12": {}, "ETH13": {}, "ETH14": {}, "ETH15": {}}, "UBB_2": {"ETH0": {}, "ETH1": {}, "ETH2": {}, "ETH3": {}, "ETH4": {}, "ETH5": {}, "ETH6": {"2025-11-19": 1}, "ETH7": {}, "ETH8": {"2025-11-19": 1, "2025-10-29": 1}, "ETH9": {}, "ETH10": {"2025-11-19": 1}, "ETH11": {}, "ETH12": {}, "ETH13": {}, "ETH14": {}, "ETH15": {}}, "UBB_3": {"ETH0": {}, "ETH1": {}, "ETH2": {}, "ETH3": {}, "ETH4": {"2025-11-14": 1}, "ETH5": {}, "ETH6": {}, "ETH7": {}, "ETH8": {"2025-11-26": 1, "2025-11-14": 1, "2025-10-29": 2}, "ETH9": {}, "ETH10": {}, "ETH11": {}, "ETH12": {"2025-11-26": 1}, "ETH13": {}, "ETH14": {}, "ETH15": {}}, "UBB_4": {"ETH0": {}, "ETH1": {}, "ETH2": {}, "ETH3": {}, "ETH4": {}, "ETH5": {}, "ETH6": {}, "ETH7": {}, "ETH8": {"2025-11-19": 1, "2025-10-29": 1}, "ETH9": {}, "ETH10": {}, "ETH11": {}, "ETH12": {"2025-11-26": 1}, "ETH13": {}, "ETH14": {}, "ETH15": {}}}, "QUAN-784": {"UBB_1": {"ETH0": {}, "ETH1": {}, "ETH2": {}, "ETH3": {}, "ETH4": {}, "ETH5": {}, "ETH6": {}, "ETH7": {}, "ETH8": {}, "ETH9": {}, "ETH10": {}, "ETH11": {}, "ETH12": {}, "ETH13": {}, "ETH14": {}, "ETH15": {}}, "UBB_2": {"ETH0": {}, "ETH1": {}, "ETH2": {}, "ETH3": {}, "ETH4": {}, "ETH5": {}, "ETH6": {}, "ETH7": {}, "ETH8": {}, "ETH9": {}, "ETH10": {}, "ETH11": {}, "ETH12": {}, "ETH13": {}, "ETH14": {}, "ETH15": {}}, "UBB_3": {"ETH0": {}, "ETH1": {}, "ETH2": {}, "ETH3": {}, "ETH4": {}, "ETH5": {}, "ETH6": {}, "ETH7": {}, "ETH8": {}, "ETH9": {}, "ETH10": {}, "ETH11": {}, "ETH12": {}, "ETH13": {}, "ETH14": {}, "ETH15": {}}, "UBB_4": {"ETH0": {}, "ETH1": {}, "ETH2": {}, "ETH3": {}, "ETH4": {}, "ETH5": {}, "ETH6": {}, "ETH7": {}, "ETH8": {}, "ETH9": {"2025-11-26": 1}, "ETH10": {}, "ETH11": {}, "ETH12": {}, "ETH13": {}, "ETH14": {}, "ETH15": {}}}, "QUAN-785": {"UBB_1": {"ETH0": {}, "ETH1": {}, "ETH2": {}, "ETH3": {"2025-12-03": 1}, "ETH4": {}, "ETH5": {}, "ETH6": {}, "ETH7": {}, "ETH8": {}, "ETH9": {}, "ETH10": {"2025-11-19": 1, "2025-11-14": 1, "2025-10-29": 1}, "ETH11": {}, "ETH12": {}, "ETH13": {}, "ETH14": {}, "ETH15": {}}, "UBB_2": {"ETH0": {}, "ETH1": {}, "ETH2": {}, "ETH3": {}, "ETH4": {}, "ETH5": {}, "ETH6": {}, "ETH7": {}, "ETH8": {}, "ETH9": {}, "ETH10": {"2025-10-29": 2}, "ETH11": {}, "ETH12": {}, "ETH13": {}, "ETH14": {}, "ETH15": {}}, "UBB_3": {"ETH0": {}, "ETH1": {}, "ETH2": {}, "ETH3": {}, "ETH4": {}, "ETH5": {}, "ETH6": {"2025-12-10": 1}, "ETH7": {}, "ETH8": {}, "ETH9": {}, "ETH10": {"2025-11-19": 1, "2025-11-14": 1, "2025-10-29": 1}, "ETH11": {}, "ETH12": {}, "ETH13": {}, "ETH14": {}, "ETH15": {}}, "UBB_4": {"ETH0": {}, "ETH1": {}, "ETH2": {}, "ETH3": {}, "ETH4": {"2025-10-29": 1}, "ETH5": {"2025-12-03": 1}, "ETH6": {}, "ETH7": {}, "ETH8": {}, "ETH9": {}, "ETH10": {"2025-10-29": 3}, "ETH11": {}, "ETH12": {}, "ETH13": {}, "ETH14": {}, "ETH15": {}}}, "QUAN-858": {"UBB_1": {"ETH0": {}, "ETH1": {}, "ETH2": {}, "ETH3": {}, "ETH4": {}, "ETH5": {}, "ETH6": {}, "ETH7": {}, "ETH8": {}, "ETH9": {}, "ETH10": {}, "ETH11": {}, "ETH12": {}, "ETH13": {}, "ETH14": {}, "ETH15": {}}, "UBB_2": {"ETH0": {}, "ETH1": {}, "ETH2": {}, "ETH3": {}, "ETH4": {}, "ETH5": {}, "ETH6": {}, "ETH7": {}, "ETH8": {}, "ETH9": {}, "ETH10": {}, "ETH11": {}, "ETH12": {}, "ETH13": {}, "ETH14": {}, "ETH15": {}}, "UBB_3": {"ETH0": {}, "ETH1": {}, "ETH2": {"2025-10-29": 1}, "ETH3": {}, "ETH4": {"2025-12-17": 1}, "ETH5": {}, "ETH6": {}, "ETH7": {}, "ETH8": {"2025-12-17": 1}, "ETH9": {}, "ETH10": {}, "ETH11": {}, "ETH12": {}, "ETH13": {}, "ETH14": {"2025-10-29": 1}, "ETH15": {}}, "UBB_4": {"ETH0": {}, "ETH1": {}, "ETH2": {"2025-10-29": 1}, "ETH3": {"2025-11-26": 1}, "ETH4": {}, "ETH5": {}, "ETH6": {}, "ETH7": {}, "ETH8": {}, "ETH9": {}, "ETH10": {}, "ETH11": {}, "ETH12": {"2025-12-17": 1}, "ETH13": {}, "ETH14": {"2025-10-29": 1}, "ETH15": {"2025-11-26": 1}}}, "QUAN-88": {"UBB_1": {"ETH0": {}, "ETH1": {}, "ETH2": {}, "ETH3": {}, "ETH4": {}, "ETH5": {}, "ETH6": {}, "ETH7": {}, "ETH8": {}, "ETH9": {}, "ETH10": {}, "ETH11": {}, "ETH12": {}, "ETH13": {}, "ETH14": {}, "ETH15": {}}, "UBB_2": {"ETH0": {}, "ETH1": {"2025-10-29": 2}, "ETH2": {}, "ETH3": {"2025-11-26": 1}, "ETH4": {}, "ETH5": {}, "ETH6": {}, "ETH7": {}, "ETH8": {}, "ETH9": {}, "ETH10": {}, "ETH11": {}, "ETH12": {}, "ETH13": {}, "ETH14": {}, "ETH15": {}}, "UBB_3": {"ETH0": {}, "ETH1": {}, "ETH2": {}, "ETH3": {}, "ETH4": {}, "ETH5": {}, "ETH6": {}, "ETH7": {"2025-11-19": 1}, "ETH8": {}, "ETH9": {}, "ETH10": {}, "ETH11": {}, "ETH12": {}, "ETH13": {}, "ETH14": {}, "ETH15": {}}, "UBB_4": {"ETH0": {}, "ETH1": {}, "ETH2": {}, "ETH3": {}, "ETH4": {}, "ETH5": {}, "ETH6": {}, "ETH7": {}, "ETH8": {}, "ETH9": {}, "ETH10": {}, "ETH11": {}, "ETH12": {}, "ETH13": {}, "ETH14": {}, "ETH15": {}}}, "QUAN-946": {"UBB_1": {"ETH0": {}, "ETH1": {}, "ETH2": {}, "ETH3": {}, "ETH4": {}, "ETH5": {}, "ETH6": {}, "ETH7": {}, "ETH8": {}, "ETH9": {}, "ETH10": {}, "ETH11": {}, "ETH12": {}, "ETH13": {}, "ETH14": {}, "ETH15": {}}, "UBB_2": {"ETH0": {}, "ETH1": {}, "ETH2": {}, "ETH3": {}, "ETH4": {}, "ETH5": {}, "ETH6": {}, "ETH7": {}, "ETH8": {}, "ETH9": {}, "ETH10": {}, "ETH11": {}, "ETH12": {}, "ETH13": {}, "ETH14": {}, "ETH15": {}}, "UBB_3": {"ETH0": {}, "ETH1": {}, "ETH2": {"2025-12-03": 1}, "ETH3": {}, "ETH4": {}, "ETH5": {}, "ETH6": {}, "ETH7": {}, "ETH8": {}, "ETH9": {}, "ETH10": {}, "ETH11": {}, "ETH12": {}, "ETH13": {}, "ETH14": {}, "ETH15": {}}, "UBB_4": {"ETH0": {}, "ETH1": {"2025-12-17": 1}, "ETH2": {"2025-12-03": 1}, "ETH3": {}, "ETH4": {}, "ETH5": {}, "ETH6": {}, "ETH7": {}, "ETH8": {}, "ETH9": {}, "ETH10": {}, "ETH11": {}, "ETH12": {}, "ETH13": {}, "ETH14": {}, "ETH15": {}}}, "QUAN-948": {"UBB_1": {"ETH0": {}, "ETH1": {}, "ETH2": {}, "ETH3": {}, "ETH4": {}, "ETH5": {}, "ETH6": {}, "ETH7": {}, "ETH8": {}, "ETH9": {}, "ETH10": {}, "ETH11": {}, "ETH12": {"2025-11-19": 1}, "ETH13": {}, "ETH14": {"2025-12-03": 1}, "ETH15": {}}, "UBB_2": {"ETH0": {}, "ETH1": {}, "ETH2": {}, "ETH3": {}, "ETH4": {}, "ETH5": {}, "ETH6": {}, "ETH7": {}, "ETH8": {}, "ETH9": {}, "ETH10": {}, "ETH11": {}, "ETH12": {"2025-11-19": 1}, "ETH13": {}, "ETH14": {"2025-12-03": 1}, "ETH15": {}}, "UBB_3": {"ETH0": {}, "ETH1": {}, "ETH2": {}, "ETH3": {}, "ETH4": {}, "ETH5": {}, "ETH6": {}, "ETH7": {}, "ETH8": {}, "ETH9": {}, "ETH10": {}, "ETH11": {}, "ETH12": {"2025-12-17": 2, "2025-12-03": 1}, "ETH13": {"2025-12-10": 1}, "ETH14": {"2025-12-17": 1, "2025-11-19": 1}, "ETH15": {"2025-12-17": 1, "2025-11-19": 1}}, "UBB_4": {"ETH0": {}, "ETH1": {}, "ETH2": {}, "ETH3": {}, "ETH4": {}, "ETH5": {}, "ETH6": {}, "ETH7": {}, "ETH8": {}, "ETH9": {}, "ETH10": {}, "ETH11": {}, "ETH12": {"2025-12-17": 2, "2025-12-03": 1}, "ETH13": {"2025-12-10": 1}, "ETH14": {"2025-12-17": 1, "2025-11-19": 1}, "ETH15": {"2025-12-17": 1, "2025-11-19": 1}}}, "QUAN-949": {"UBB_1": {"ETH0": {}, "ETH1": {}, "ETH2": {}, "ETH3": {}, "ETH4": {}, "ETH5": {}, "ETH6": {}, "ETH7": {}, "ETH8": {"2025-12-17": 7, "2025-12-03": 1, "2025-12-10": 1, "2025-11-26": 3, "2025-11-19": 2, "2025-10-29": 4}, "ETH9": {}, "ETH10": {"2025-12-10": 1, "2025-11-19": 1, "2025-11-14": 1, "2025-10-29": 2}, "ETH11": {}, "ETH12": {}, "ETH13": {}, "ETH14": {}, "ETH15": {}}, "UBB_2": {"ETH0": {}, "ETH1": {}, "ETH2": {}, "ETH3": {}, "ETH4": {}, "ETH5": {}, "ETH6": {}, "ETH7": {}, "ETH8": {"2025-12-17": 5, "2025-12-10": 4, "2025-11-26": 1, "2025-11-14": 1, "2025-10-29": 4}, "ETH9": {}, "ETH10": {"2025-12-17": 1, "2025-10-29": 2}, "ETH11": {}, "ETH12": {}, "ETH13": {}, "ETH14": {}, "ETH15": {}}, "UBB_3": {"ETH0": {}, "ETH1": {}, "ETH2": {}, "ETH3": {}, "ETH4": {}, "ETH5": {}, "ETH6": {}, "ETH7": {}, "ETH8": {"2025-12-17": 7, "2025-12-03": 1, "2025-12-10": 1, "2025-11-26": 3, "2025-11-19": 2, "2025-10-29": 5}, "ETH9": {}, "ETH10": {"2025-12-10": 1, "2025-11-19": 1, "2025-11-14": 1, "2025-10-29": 2}, "ETH11": {}, "ETH12": {}, "ETH13": {}, "ETH14": {}, "ETH15": {}}, "UBB_4": {"ETH0": {}, "ETH1": {}, "ETH2": {}, "ETH3": {}, "ETH4": {}, "ETH5": {}, "ETH6": {}, "ETH7": {}, "ETH8": {"2025-12-17": 5, "2025-12-10": 4, "2025-11-26": 1, "2025-11-14": 1, "2025-10-29": 4}, "ETH9": {"2025-11-26": 1}, "ETH10": {"2025-12-17": 1, "2025-10-29": 3}, "ETH11": {}, "ETH12": {}, "ETH13": {}, "ETH14": {}, "ETH15": {}}}}, "UBB_CTRL": {"QUAN-176": {"UBB_1": {"CtrlA": {"2025-12-17": 1, "2025-12-03": 1, "2025-12-10": 1, "2025-11-19": 2}, "CtrlB": {"2025-12-17": 1}, "CtrlC": {"2025-12-03": 2, "2025-11-26": 5, "2025-10-29": 1}, "CtrlD": {}, "CtrlE": {"2025-11-26": 1}, "CtrlF": {"2025-11-19": 1}, "CtrlG": {}, "CtrlH": {}}, "UBB_2": {"CtrlA": {"2025-12-17": 5, "2025-12-03": 1, "2025-12-10": 1, "2025-11-26": 1, "2025-11-14": 2, "2025-10-29": 1}, "CtrlB": {"2025-12-03": 1}, "CtrlC": {"2025-12-03": 2, "2025-11-26": 2, "2025-11-19": 1, "2025-11-14": 3}, "CtrlD": {"2025-12-03": 1}, "CtrlE": {"2025-12-03": 2, "2025-10-29": 1}, "CtrlF": {"2025-12-03": 3}, "CtrlG": {}, "CtrlH": {}}, "UBB_3": {"CtrlA": {"2025-12-17": 2, "2025-11-26": 3, "2025-11-14": 1, "2025-10-29": 1}, "CtrlB": {"2025-12-10": 1, "2025-11-26": 2}, "CtrlC": {"2025-12-03": 1, "2025-11-26": 2, "2025-11-19": 1, "2025-11-14": 1, "2025-10-29": 1}, "CtrlD": {"2025-11-26": 3}, "CtrlE": {"2025-12-03": 1, "2025-11-19": 2}, "CtrlF": {"2025-11-19": 1}, "CtrlG": {}, "CtrlH": {}}, "UBB_4": {"CtrlA": {"2025-12-17": 5, "2025-12-03": 1, "2025-11-26": 1, "2025-11-14": 3, "2025-10-29": 2}, "CtrlB": {}, "CtrlC": {"2025-12-03": 2, "2025-11-26": 1, "2025-11-14": 1}, "CtrlD": {}, "CtrlE": {}, "CtrlF": {"2025-11-26": 2}, "CtrlG": {}, "CtrlH": {}}}, "QUAN-210": {"UBB_1": {"CtrlA": {"2025-11-19": 1}, "CtrlB": {"2025-11-26": 2, "2025-11-19": 1}, "CtrlC": {}, "CtrlD": {}, "CtrlE": {"2025-12-17": 1, "2025-11-19": 1}, "CtrlF": {}, "CtrlG": {}, "CtrlH": {}}, "UBB_2": {"CtrlA": {"2025-12-17": 2, "2025-11-14": 1}, "CtrlB": {"2025-12-03": 1, "2025-11-26": 1, "2025-10-29": 2}, "CtrlC": {}, "CtrlD": {}, "CtrlE": {}, "CtrlF": {"2025-12-17": 1, "2025-11-19": 1}, "CtrlG": {}, "CtrlH": {}}, "UBB_3": {"CtrlA": {}, "CtrlB": {"2025-12-03": 1, "2025-11-26": 1, "2025-11-19": 1, "2025-10-29": 1}, "CtrlC": {}, "CtrlD": {}, "CtrlE": {}, "CtrlF": {"2025-11-26": 1, "2025-11-19": 1}, "CtrlG": {}, "CtrlH": {}}, "UBB_4": {"CtrlA": {"2025-12-17": 1, "2025-11-19": 1}, "CtrlB": {"2025-11-26": 1, "2025-10-29": 1}, "CtrlC": {}, "CtrlD": {}, "CtrlE": {"2025-11-26": 1}, "CtrlF": {}, "CtrlG": {}, "CtrlH": {}}}, "QUAN-401": {"UBB_1": {"CtrlA": {}, "CtrlB": {}, "CtrlC": {}, "CtrlD": {}, "CtrlE": {}, "CtrlF": {}, "CtrlG": {}, "CtrlH": {}}, "UBB_2": {"CtrlA": {}, "CtrlB": {"2025-12-03": 1}, "CtrlC": {}, "CtrlD": {}, "CtrlE": {}, "CtrlF": {}, "CtrlG": {}, "CtrlH": {}}, "UBB_3": {"CtrlA": {}, "CtrlB": {}, "CtrlC": {}, "CtrlD": {}, "CtrlE": {}, "CtrlF": {}, "CtrlG": {}, "CtrlH": {}}, "UBB_4": {"CtrlA": {}, "CtrlB": {}, "CtrlC": {}, "CtrlD": {}, "CtrlE": {}, "CtrlF": {}, "CtrlG": {}, "CtrlH": {}}}}, "ASIC_ETH": {"QUAN-177": {"ASIC_1": {"ETH0": {}, "ETH1": {}, "ETH2": {}, "ETH3": {}, "ETH4": {"2025-11-14": 1}, "ETH5": {}, "ETH6": {}, "ETH7": {"2025-11-14": 1}, "ETH8": {}, "ETH9": {}, "ETH10": {}, "ETH11": {}, "ETH12": {}, "ETH13": {}, "ETH14": {}, "ETH15": {}}, "ASIC_2": {"ETH0": {}, "ETH1": {}, "ETH2": {}, "ETH3": {}, "ETH4": {}, "ETH5": {}, "ETH6": {}, "ETH7": {}, "ETH8": {}, "ETH9": {}, "ETH10": {}, "ETH11": {}, "ETH12": {}, "ETH13": {}, "ETH14": {}, "ETH15": {}}, "ASIC_3": {"ETH0": {}, "ETH1": {}, "ETH2": {}, "ETH3": {}, "ETH4": {}, "ETH5": {}, "ETH6": {}, "ETH7": {}, "ETH8": {}, "ETH9": {}, "ETH10": {}, "ETH11": {}, "ETH12": {}, "ETH13": {}, "ETH14": {}, "ETH15": {}}, "ASIC_4": {"ETH0": {}, "ETH1": {}, "ETH2": {}, "ETH3": {}, "ETH4": {}, "ETH5": {}, "ETH6": {}, "ETH7": {}, "ETH8": {}, "ETH9": {"2025-11-26": 4}, "ETH10": {}, "ETH11": {}, "ETH12": {}, "ETH13": {}, "ETH14": {}, "ETH15": {}}, "ASIC_5": {"ETH0": {}, "ETH1": {}, "ETH2": {}, "ETH3": {}, "ETH4": {}, "ETH5": {"2025-11-19": 1, "2025-10-29": 2}, "ETH6": {"2025-10-29": 2}, "ETH7": {}, "ETH8": {}, "ETH9": {}, "ETH10": {}, "ETH11": {}, "ETH12": {}, "ETH13": {}, "ETH14": {}, "ETH15": {}}, "ASIC_6": {"ETH0": {}, "ETH1": {}, "ETH2": {}, "ETH3": {}, "ETH4": {}, "ETH5": {}, "ETH6": {}, "ETH7": {}, "ETH8": {}, "ETH9": {}, "ETH10": {}, "ETH11": {}, "ETH12": {}, "ETH13": {}, "ETH14": {}, "ETH15": {}}, "ASIC_7": {"ETH0": {}, "ETH1": {}, "ETH2": {}, "ETH3": {}, "ETH4": {}, "ETH5": {}, "ETH6": {}, "ETH7": {}, "ETH8": {}, "ETH9": {}, "ETH10": {}, "ETH11": {}, "ETH12": {}, "ETH13": {}, "ETH14": {}, "ETH15": {}}, "ASIC_8": {"ETH0": {}, "ETH1": {}, "ETH2": {}, "ETH3": {}, "ETH4": {}, "ETH5": {}, "ETH6": {}, "ETH7": {}, "ETH8": {}, "ETH9": {}, "ETH10": {}, "ETH11": {}, "ETH12": {}, "ETH13": {}, "ETH14": {}, "ETH15": {}}}, "QUAN-204": {"ASIC_1": {"ETH0": {}, "ETH1": {}, "ETH2": {}, "ETH3": {"2025-11-19": 1}, "ETH4": {}, "ETH5": {}, "ETH6": {}, "ETH7": {}, "ETH8": {}, "ETH9": {}, "ETH10": {}, "ETH11": {}, "ETH12": {}, "ETH13": {}, "ETH14": {}, "ETH15": {}}, "ASIC_2": {"ETH0": {}, "ETH1": {}, "ETH2": {}, "ETH3": {}, "ETH4": {}, "ETH5": {}, "ETH6": {}, "ETH7": {}, "ETH8": {}, "ETH9": {}, "ETH10": {}, "ETH11": {}, "ETH12": {}, "ETH13": {}, "ETH14": {}, "ETH15": {}}, "ASIC_3": {"ETH0": {}, "ETH1": {}, "ETH2": {}, "ETH3": {}, "ETH4": {}, "ETH5": {}, "ETH6": {}, "ETH7": {}, "ETH8": {}, "ETH9": {}, "ETH10": {}, "ETH11": {}, "ETH12": {}, "ETH13": {}, "ETH14": {}, "ETH15": {}}, "ASIC_4": {"ETH0": {}, "ETH1": {}, "ETH2": {}, "ETH3": {"2025-10-29": 2}, "ETH4": {}, "ETH5": {}, "ETH6": {}, "ETH7": {}, "ETH8": {}, "ETH9": {}, "ETH10": {}, "ETH11": {}, "ETH12": {}, "ETH13": {}, "ETH14": {}, "ETH15": {}}, "ASIC_5": {"ETH0": {}, "ETH1": {}, "ETH2": {}, "ETH3": {}, "ETH4": {}, "ETH5": {}, "ETH6": {}, "ETH7": {}, "ETH8": {}, "ETH9": {}, "ETH10": {}, "ETH11": {}, "ETH12": {}, "ETH13": {}, "ETH14": {}, "ETH15": {}}, "ASIC_6": {"ETH0": {}, "ETH1": {}, "ETH2": {}, "ETH3": {}, "ETH4": {}, "ETH5": {}, "ETH6": {}, "ETH7": {}, "ETH8": {}, "ETH9": {}, "ETH10": {}, "ETH11": {}, "ETH12": {}, "ETH13": {}, "ETH14": {}, "ETH15": {}}, "ASIC_7": {"ETH0": {}, "ETH1": {}, "ETH2": {}, "ETH3": {}, "ETH4": {}, "ETH5": {}, "ETH6": {}, "ETH7": {}, "ETH8": {}, "ETH9": {}, "ETH10": {}, "ETH11": {}, "ETH12": {}, "ETH13": {}, "ETH14": {}, "ETH15": {}}, "ASIC_8": {"ETH0": {}, "ETH1": {}, "ETH2": {}, "ETH3": {}, "ETH4": {}, "ETH5": {}, "ETH6": {}, "ETH7": {}, "ETH8": {}, "ETH9": {}, "ETH10": {}, "ETH11": {}, "ETH12": {}, "ETH13": {}, "ETH14": {}, "ETH15": {}}}, "QUAN-235": {"ASIC_1": {"ETH0": {}, "ETH1": {}, "ETH2": {}, "ETH3": {}, "ETH4": {}, "ETH5": {}, "ETH6": {}, "ETH7": {}, "ETH8": {}, "ETH9": {}, "ETH10": {"2025-11-19": 1}, "ETH11": {}, "ETH12": {}, "ETH13": {}, "ETH14": {}, "ETH15": {}}, "ASIC_2": {"ETH0": {}, "ETH1": {}, "ETH2": {}, "ETH3": {}, "ETH4": {}, "ETH5": {}, "ETH6": {"2025-11-19": 1}, "ETH7": {}, "ETH8": {}, "ETH9": {}, "ETH10": {}, "ETH11": {}, "ETH12": {}, "ETH13": {}, "ETH14": {}, "ETH15": {}}, "ASIC_3": {"ETH0": {}, "ETH1": {}, "ETH2": {}, "ETH3": {}, "ETH4": {}, "ETH5": {}, "ETH6": {}, "ETH7": {}, "ETH8": {}, "ETH9": {}, "ETH10": {}, "ETH11": {}, "ETH12": {}, "ETH13": {}, "ETH14": {}, "ETH15": {}}, "ASIC_4": {"ETH0": {}, "ETH1": {}, "ETH2": {}, "ETH3": {}, "ETH4": {}, "ETH5": {}, "ETH6": {}, "ETH7": {}, "ETH8": {}, "ETH9": {}, "ETH10": {}, "ETH11": {}, "ETH12": {}, "ETH13": {}, "ETH14": {}, "ETH15": {}}, "ASIC_5": {"ETH0": {}, "ETH1": {}, "ETH2": {}, "ETH3": {}, "ETH4": {}, "ETH5": {}, "ETH6": {}, "ETH7": {}, "ETH8": {}, "ETH9": {}, "ETH10": {}, "ETH11": {}, "ETH12": {}, "ETH13": {}, "ETH14": {}, "ETH15": {}}, "ASIC_6": {"ETH0": {}, "ETH1": {}, "ETH2": {}, "ETH3": {}, "ETH4": {}, "ETH5": {}, "ETH6": {}, "ETH7": {}, "ETH8": {}, "ETH9": {}, "ETH10": {}, "ETH11": {}, "ETH12": {"2025-11-26": 2}, "ETH13": {}, "ETH14": {}, "ETH15": {}}, "ASIC_7": {"ETH0": {}, "ETH1": {}, "ETH2": {}, "ETH3": {}, "ETH4": {}, "ETH5": {}, "ETH6": {}, "ETH7": {}, "ETH8": {"2025-11-14": 1}, "ETH9": {}, "ETH10": {}, "ETH11": {}, "ETH12": {}, "ETH13": {}, "ETH14": {}, "ETH15": {}}, "ASIC_8": {"ETH0": {}, "ETH1": {}, "ETH2": {}, "ETH3": {}, "ETH4": {"2025-11-14": 1}, "ETH5": {}, "ETH6": {}, "ETH7": {}, "ETH8": {"2025-11-26": 2, "2025-11-19": 2, "2025-10-29": 7}, "ETH9": {}, "ETH10": {}, "ETH11": {}, "ETH12": {}, "ETH13": {}, "ETH14": {}, "ETH15": {}}}, "QUAN-784": {"ASIC_1": {"ETH0": {}, "ETH1": {}, "ETH2": {}, "ETH3": {}, "ETH4": {}, "ETH5": {}, "ETH6": {}, "ETH7": {}, "ETH8": {}, "ETH9": {}, "ETH10": {}, "ETH11": {}, "ETH12": {}, "ETH13": {}, "ETH14": {}, "ETH15": {}}, "ASIC_2": {"ETH0": {}, "ETH1": {}, "ETH2": {}, "ETH3": {}, "ETH4": {}, "ETH5": {}, "ETH6": {}, "ETH7": {}, "ETH8": {}, "ETH9": {}, "ETH10": {}, "ETH11": {}, "ETH12": {}, "ETH13": {}, "ETH14": {}, "ETH15": {}}, "ASIC_3": {"ETH0": {}, "ETH1": {}, "ETH2": {}, "ETH3": {}, "ETH4": {}, "ETH5": {}, "ETH6": {}, "ETH7": {}, "ETH8": {}, "ETH9": {}, "ETH10": {}, "ETH11": {}, "ETH12": {}, "ETH13": {}, "ETH14": {}, "ETH15": {}}, "ASIC_4": {"ETH0": {}, "ETH1": {}, "ETH2": {}, "ETH3": {}, "ETH4": {}, "ETH5": {}, "ETH6": {}, "ETH7": {}, "ETH8": {}, "ETH9": {"2025-11-26": 1}, "ETH10": {}, "ETH11": {}, "ETH12": {}, "ETH13": {}, "ETH14": {}, "ETH15": {}}, "ASIC_5": {"ETH0": {}, "ETH1": {}, "ETH2": {}, "ETH3": {}, "ETH4": {}, "ETH5": {}, "ETH6": {}, "ETH7": {}, "ETH8": {}, "ETH9": {}, "ETH10": {}, "ETH11": {}, "ETH12": {}, "ETH13": {}, "ETH14": {}, "ETH15": {}}, "ASIC_6": {"ETH0": {}, "ETH1": {}, "ETH2": {}, "ETH3": {}, "ETH4": {}, "ETH5": {}, "ETH6": {}, "ETH7": {}, "ETH8": {}, "ETH9": {}, "ETH10": {}, "ETH11": {}, "ETH12": {}, "ETH13": {}, "ETH14": {}, "ETH15": {}}, "ASIC_7": {"ETH0": {}, "ETH1": {}, "ETH2": {}, "ETH3": {}, "ETH4": {}, "ETH5": {}, "ETH6": {}, "ETH7": {}, "ETH8": {}, "ETH9": {}, "ETH10": {}, "ETH11": {}, "ETH12": {}, "ETH13": {}, "ETH14": {}, "ETH15": {}}, "ASIC_8": {"ETH0": {}, "ETH1": {}, "ETH2": {}, "ETH3": {}, "ETH4": {}, "ETH5": {}, "ETH6": {}, "ETH7": {}, "ETH8": {}, "ETH9": {}, "ETH10": {}, "ETH11": {}, "ETH12": {}, "ETH13": {}, "ETH14": {}, "ETH15": {}}}, "QUAN-785": {"ASIC_1": {"ETH0": {}, "ETH1": {}, "ETH2": {}, "ETH3": {"2025-12-03": 1}, "ETH4": {"2025-10-29": 1}, "ETH5": {}, "ETH6": {}, "ETH7": {}, "ETH8": {}, "ETH9": {}, "ETH10": {}, "ETH11": {}, "ETH12": {}, "ETH13": {}, "ETH14": {}, "ETH15": {}}, "ASIC_2": {"ETH0": {}, "ETH1": {}, "ETH2": {}, "ETH3": {}, "ETH4": {}, "ETH5": {}, "ETH6": {}, "ETH7": {}, "ETH8": {}, "ETH9": {}, "ETH10": {}, "ETH11": {}, "ETH12": {}, "ETH13": {}, "ETH14": {}, "ETH15": {}}, "ASIC_3": {"ETH0": {}, "ETH1": {}, "ETH2": {}, "ETH3": {}, "ETH4": {}, "ETH5": {}, "ETH6": {}, "ETH7": {}, "ETH8": {}, "ETH9": {}, "ETH10": {}, "ETH11": {}, "ETH12": {}, "ETH13": {}, "ETH14": {}, "ETH15": {}}, "ASIC_4": {"ETH0": {}, "ETH1": {}, "ETH2": {}, "ETH3": {}, "ETH4": {}, "ETH5": {}, "ETH6": {}, "ETH7": {}, "ETH8": {}, "ETH9": {}, "ETH10": {}, "ETH11": {}, "ETH12": {}, "ETH13": {}, "ETH14": {}, "ETH15": {}}, "ASIC_5": {"ETH0": {}, "ETH1": {}, "ETH2": {}, "ETH3": {}, "ETH4": {}, "ETH5": {"2025-12-03": 1}, "ETH6": {"2025-12-10": 1}, "ETH7": {}, "ETH8": {}, "ETH9": {}, "ETH10": {}, "ETH11": {}, "ETH12": {}, "ETH13": {}, "ETH14": {}, "ETH15": {}}, "ASIC_6": {"ETH0": {}, "ETH1": {}, "ETH2": {}, "ETH3": {}, "ETH4": {}, "ETH5": {}, "ETH6": {}, "ETH7": {}, "ETH8": {}, "ETH9": {}, "ETH10": {}, "ETH11": {}, "ETH12": {}, "ETH13": {}, "ETH14": {}, "ETH15": {}}, "ASIC_7": {"ETH0": {}, "ETH1": {}, "ETH2": {}, "ETH3": {}, "ETH4": {}, "ETH5": {}, "ETH6": {}, "ETH7": {}, "ETH8": {}, "ETH9": {}, "ETH10": {}, "ETH11": {}, "ETH12": {}, "ETH13": {}, "ETH14": {}, "ETH15": {}}, "ASIC_8": {"ETH0": {}, "ETH1": {}, "ETH2": {}, "ETH3": {}, "ETH4": {}, "ETH5": {}, "ETH6": {}, "ETH7": {}, "ETH8": {}, "ETH9": {}, "ETH10": {"2025-11-19": 2, "2025-11-14": 2, "2025-10-29": 7}, "ETH11": {}, "ETH12": {}, "ETH13": {}, "ETH14": {}, "ETH15": {}}}, "QUAN-858": {"ASIC_1": {"ETH0": {}, "ETH1": {}, "ETH2": {}, "ETH3": {}, "ETH4": {}, "ETH5": {}, "ETH6": {}, "ETH7": {}, "ETH8": {}, "ETH9": {}, "ETH10": {}, "ETH11": {}, "ETH12": {}, "ETH13": {}, "ETH14": {"2025-10-29": 2}, "ETH15": {}}, "ASIC_2": {"ETH0": {}, "ETH1": {}, "ETH2": {}, "ETH3": {}, "ETH4": {}, "ETH5": {}, "ETH6": {}, "ETH7": {}, "ETH8": {}, "ETH9": {}, "ETH10": {}, "ETH11": {}, "ETH12": {"2025-12-17": 1}, "ETH13": {}, "ETH14": {}, "ETH15": {"2025-11-26": 1}}, "ASIC_3": {"ETH0": {}, "ETH1": {}, "ETH2": {}, "ETH3": {}, "ETH4": {}, "ETH5": {}, "ETH6": {}, "ETH7": {}, "ETH8": {}, "ETH9": {}, "ETH10": {}, "ETH11": {}, "ETH12": {}, "ETH13": {}, "ETH14": {}, "ETH15": {}}, "ASIC_4": {"ETH0": {}, "ETH1": {}, "ETH2": {}, "ETH3": {}, "ETH4": {}, "ETH5": {}, "ETH6": {}, "ETH7": {}, "ETH8": {}, "ETH9": {}, "ETH10": {}, "ETH11": {}, "ETH12": {}, "ETH13": {}, "ETH14": {}, "ETH15": {}}, "ASIC_5": {"ETH0": {}, "ETH1": {}, "ETH2": {"2025-10-29": 2}, "ETH3": {}, "ETH4": {}, "ETH5": {}, "ETH6": {}, "ETH7": {}, "ETH8": {}, "ETH9": {}, "ETH10": {}, "ETH11": {}, "ETH12": {}, "ETH13": {}, "ETH14": {}, "ETH15": {}}, "ASIC_6": {"ETH0": {}, "ETH1": {}, "ETH2": {}, "ETH3": {"2025-11-26": 1}, "ETH4": {}, "ETH5": {}, "ETH6": {}, "ETH7": {}, "ETH8": {"2025-12-17": 1}, "ETH9": {}, "ETH10": {}, "ETH11": {}, "ETH12": {}, "ETH13": {}, "ETH14": {}, "ETH15": {}}, "ASIC_7": {"ETH0": {}, "ETH1": {}, "ETH2": {}, "ETH3": {}, "ETH4": {"2025-12-17": 1}, "ETH5": {}, "ETH6": {}, "ETH7": {}, "ETH8": {}, "ETH9": {}, "ETH10": {}, "ETH11": {}, "ETH12": {}, "ETH13": {}, "ETH14": {}, "ETH15": {}}, "ASIC_8": {"ETH0": {}, "ETH1": {}, "ETH2": {}, "ETH3": {}, "ETH4": {}, "ETH5": {}, "ETH6": {}, "ETH7": {}, "ETH8": {}, "ETH9": {}, "ETH10": {}, "ETH11": {}, "ETH12": {}, "ETH13": {}, "ETH14": {}, "ETH15": {}}}, "QUAN-88": {"ASIC_1": {"ETH0": {}, "ETH1": {}, "ETH2": {}, "ETH3": {}, "ETH4": {}, "ETH5": {}, "ETH6": {}, "ETH7": {}, "ETH8": {}, "ETH9": {}, "ETH10": {}, "ETH11": {}, "ETH12": {}, "ETH13": {}, "ETH14": {}, "ETH15": {}}, "ASIC_2": {"ETH0": {}, "ETH1": {"2025-10-29": 2}, "ETH2": {}, "ETH3": {}, "ETH4": {}, "ETH5": {}, "ETH6": {}, "ETH7": {}, "ETH8": {}, "ETH9": {}, "ETH10": {}, "ETH11": {}, "ETH12": {}, "ETH13": {}, "ETH14": {}, "ETH15": {}}, "ASIC_3": {"ETH0": {}, "ETH1": {}, "ETH2": {}, "ETH3": {}, "ETH4": {}, "ETH5": {}, "ETH6": {}, "ETH7": {}, "ETH8": {}, "ETH9": {}, "ETH10": {}, "ETH11": {}, "ETH12": {}, "ETH13": {}, "ETH14": {}, "ETH15": {}}, "ASIC_4": {"ETH0": {}, "ETH1": {}, "ETH2": {}, "ETH3": {"2025-11-26": 1}, "ETH4": {}, "ETH5": {}, "ETH6": {}, "ETH7": {}, "ETH8": {}, "ETH9": {}, "ETH10": {}, "ETH11": {}, "ETH12": {}, "ETH13": {}, "ETH14": {}, "ETH15": {}}, "ASIC_5": {"ETH0": {}, "ETH1": {}, "ETH2": {}, "ETH3": {}, "ETH4": {}, "ETH5": {}, "ETH6": {}, "ETH7": {"2025-11-19": 1}, "ETH8": {}, "ETH9": {}, "ETH10": {}, "ETH11": {}, "ETH12": {}, "ETH13": {}, "ETH14": {}, "ETH15": {}}, "ASIC_6": {"ETH0": {}, "ETH1": {}, "ETH2": {}, "ETH3": {}, "ETH4": {}, "ETH5": {}, "ETH6": {}, "ETH7": {}, "ETH8": {}, "ETH9": {}, "ETH10": {}, "ETH11": {}, "ETH12": {}, "ETH13": {}, "ETH14": {}, "ETH15": {}}, "ASIC_7": {"ETH0": {}, "ETH1": {}, "ETH2": {}, "ETH3": {}, "ETH4": {}, "ETH5": {}, "ETH6": {}, "ETH7": {}, "ETH8": {}, "ETH9": {}, "ETH10": {}, "ETH11": {}, "ETH12": {}, "ETH13": {}, "ETH14": {}, "ETH15": {}}, "ASIC_8": {"ETH0": {}, "ETH1": {}, "ETH2": {}, "ETH3": {}, "ETH4": {}, "ETH5": {}, "ETH6": {}, "ETH7": {}, "ETH8": {}, "ETH9": {}, "ETH10": {}, "ETH11": {}, "ETH12": {}, "ETH13": {}, "ETH14": {}, "ETH15": {}}}, "QUAN-946": {"ASIC_1": {"ETH0": {}, "ETH1": {}, "ETH2": {"2025-12-03": 1}, "ETH3": {}, "ETH4": {}, "ETH5": {}, "ETH6": {}, "ETH7": {}, "ETH8": {}, "ETH9": {}, "ETH10": {}, "ETH11": {}, "ETH12": {}, "ETH13": {}, "ETH14": {}, "ETH15": {}}, "ASIC_2": {"ETH0": {}, "ETH1": {"2025-12-17": 1}, "ETH2": {}, "ETH3": {}, "ETH4": {}, "ETH5": {}, "ETH6": {}, "ETH7": {}, "ETH8": {}, "ETH9": {}, "ETH10": {}, "ETH11": {}, "ETH12": {}, "ETH13": {}, "ETH14": {}, "ETH15": {}}, "ASIC_3": {"ETH0": {}, "ETH1": {}, "ETH2": {}, "ETH3": {}, "ETH4": {}, "ETH5": {}, "ETH6": {}, "ETH7": {}, "ETH8": {}, "ETH9": {}, "ETH10": {}, "ETH11": {}, "ETH12": {}, "ETH13": {}, "ETH14": {}, "ETH15": {}}, "ASIC_4": {"ETH0": {}, "ETH1": {}, "ETH2": {"2025-12-03": 1}, "ETH3": {}, "ETH4": {}, "ETH5": {}, "ETH6": {}, "ETH7": {}, "ETH8": {}, "ETH9": {}, "ETH10": {}, "ETH11": {}, "ETH12": {}, "ETH13": {}, "ETH14": {}, "ETH15": {}}, "ASIC_5": {"ETH0": {}, "ETH1": {}, "ETH2": {}, "ETH3": {}, "ETH4": {}, "ETH5": {}, "ETH6": {}, "ETH7": {}, "ETH8": {}, "ETH9": {}, "ETH10": {}, "ETH11": {}, "ETH12": {}, "ETH13": {}, "ETH14": {}, "ETH15": {}}, "ASIC_6": {"ETH0": {}, "ETH1": {}, "ETH2": {}, "ETH3": {}, "ETH4": {}, "ETH5": {}, "ETH6": {}, "ETH7": {}, "ETH8": {}, "ETH9": {}, "ETH10": {}, "ETH11": {}, "ETH12": {}, "ETH13": {}, "ETH14": {}, "ETH15": {}}, "ASIC_7": {"ETH0": {}, "ETH1": {}, "ETH2": {}, "ETH3": {}, "ETH4": {}, "ETH5": {}, "ETH6": {}, "ETH7": {}, "ETH8": {}, "ETH9": {}, "ETH10": {}, "ETH11": {}, "ETH12": {}, "ETH13": {}, "ETH14": {}, "ETH15": {}}, "ASIC_8": {"ETH0": {}, "ETH1": {}, "ETH2": {}, "ETH3": {}, "ETH4": {}, "ETH5": {}, "ETH6": {}, "ETH7": {}, "ETH8": {}, "ETH9": {}, "ETH10": {}, "ETH11": {}, "ETH12": {}, "ETH13": {}, "ETH14": {}, "ETH15": {}}}, "QUAN-948": {"ASIC_1": {"ETH0": {}, "ETH1": {}, "ETH2": {}, "ETH3": {}, "ETH4": {}, "ETH5": {}, "ETH6": {}, "ETH7": {}, "ETH8": {}, "ETH9": {}, "ETH10": {}, "ETH11": {}, "ETH12": {}, "ETH13": {}, "ETH14": {}, "ETH15": {}}, "ASIC_2": {"ETH0": {}, "ETH1": {}, "ETH2": {}, "ETH3": {}, "ETH4": {}, "ETH5": {}, "ETH6": {}, "ETH7": {}, "ETH8": {}, "ETH9": {}, "ETH10": {}, "ETH11": {}, "ETH12": {}, "ETH13": {}, "ETH14": {}, "ETH15": {}}, "ASIC_3": {"ETH0": {}, "ETH1": {}, "ETH2": {}, "ETH3": {}, "ETH4": {}, "ETH5": {}, "ETH6": {}, "ETH7": {}, "ETH8": {}, "ETH9": {}, "ETH10": {}, "ETH11": {}, "ETH12": {}, "ETH13": {}, "ETH14": {}, "ETH15": {}}, "ASIC_4": {"ETH0": {}, "ETH1": {}, "ETH2": {}, "ETH3": {}, "ETH4": {}, "ETH5": {}, "ETH6": {}, "ETH7": {}, "ETH8": {}, "ETH9": {}, "ETH10": {}, "ETH11": {}, "ETH12": {}, "ETH13": {}, "ETH14": {}, "ETH15": {}}, "ASIC_5": {"ETH0": {}, "ETH1": {}, "ETH2": {}, "ETH3": {}, "ETH4": {}, "ETH5": {}, "ETH6": {}, "ETH7": {}, "ETH8": {}, "ETH9": {}, "ETH10": {}, "ETH11": {}, "ETH12": {"2025-12-17": 2}, "ETH13": {}, "ETH14": {"2025-12-17": 2}, "ETH15": {"2025-12-17": 2, "2025-11-19": 2}}, "ASIC_6": {"ETH0": {}, "ETH1": {}, "ETH2": {}, "ETH3": {}, "ETH4": {}, "ETH5": {}, "ETH6": {}, "ETH7": {}, "ETH8": {}, "ETH9": {}, "ETH10": {}, "ETH11": {}, "ETH12": {"2025-12-17": 2}, "ETH13": {"2025-12-10": 2}, "ETH14": {"2025-11-19": 2}, "ETH15": {}}, "ASIC_7": {"ETH0": {}, "ETH1": {}, "ETH2": {}, "ETH3": {}, "ETH4": {}, "ETH5": {}, "ETH6": {}, "ETH7": {}, "ETH8": {}, "ETH9": {}, "ETH10": {}, "ETH11": {}, "ETH12": {"2025-12-03": 2, "2025-11-19": 2}, "ETH13": {}, "ETH14": {}, "ETH15": {}}, "ASIC_8": {"ETH0": {}, "ETH1": {}, "ETH2": {}, "ETH3": {}, "ETH4": {}, "ETH5": {}, "ETH6": {}, "ETH7": {}, "ETH8": {}, "ETH9": {}, "ETH10": {}, "ETH11": {}, "ETH12": {}, "ETH13": {}, "ETH14": {"2025-12-03": 2}, "ETH15": {}}}, "QUAN-949": {"ASIC_1": {"ETH0": {}, "ETH1": {}, "ETH2": {}, "ETH3": {}, "ETH4": {}, "ETH5": {}, "ETH6": {}, "ETH7": {}, "ETH8": {}, "ETH9": {}, "ETH10": {}, "ETH11": {}, "ETH12": {}, "ETH13": {}, "ETH14": {}, "ETH15": {}}, "ASIC_2": {"ETH0": {}, "ETH1": {}, "ETH2": {}, "ETH3": {}, "ETH4": {}, "ETH5": {}, "ETH6": {}, "ETH7": {}, "ETH8": {}, "ETH9": {}, "ETH10": {}, "ETH11": {}, "ETH12": {}, "ETH13": {}, "ETH14": {}, "ETH15": {}}, "ASIC_3": {"ETH0": {}, "ETH1": {}, "ETH2": {}, "ETH3": {}, "ETH4": {}, "ETH5": {}, "ETH6": {}, "ETH7": {}, "ETH8": {}, "ETH9": {}, "ETH10": {}, "ETH11": {}, "ETH12": {}, "ETH13": {}, "ETH14": {}, "ETH15": {}}, "ASIC_4": {"ETH0": {}, "ETH1": {}, "ETH2": {}, "ETH3": {}, "ETH4": {}, "ETH5": {}, "ETH6": {}, "ETH7": {}, "ETH8": {}, "ETH9": {"2025-11-26": 1}, "ETH10": {}, "ETH11": {}, "ETH12": {}, "ETH13": {}, "ETH14": {}, "ETH15": {}}, "ASIC_5": {"ETH0": {}, "ETH1": {}, "ETH2": {}, "ETH3": {}, "ETH4": {}, "ETH5": {}, "ETH6": {}, "ETH7": {}, "ETH8": {}, "ETH9": {}, "ETH10": {}, "ETH11": {}, "ETH12": {}, "ETH13": {}, "ETH14": {}, "ETH15": {}}, "ASIC_6": {"ETH0": {}, "ETH1": {}, "ETH2": {}, "ETH3": {}, "ETH4": {}, "ETH5": {}, "ETH6": {}, "ETH7": {}, "ETH8": {}, "ETH9": {}, "ETH10": {}, "ETH11": {}, "ETH12": {}, "ETH13": {}, "ETH14": {}, "ETH15": {}}, "ASIC_7": {"ETH0": {}, "ETH1": {}, "ETH2": {}, "ETH3": {}, "ETH4": {}, "ETH5": {}, "ETH6": {}, "ETH7": {}, "ETH8": {}, "ETH9": {}, "ETH10": {}, "ETH11": {}, "ETH12": {}, "ETH13": {}, "ETH14": {}, "ETH15": {}}, "ASIC_8": {"ETH0": {}, "ETH1": {}, "ETH2": {}, "ETH3": {}, "ETH4": {}, "ETH5": {}, "ETH6": {}, "ETH7": {}, "ETH8": {"2025-12-17": 24, "2025-12-03": 2, "2025-12-10": 10, "2025-11-26": 8, "2025-11-19": 4, "2025-11-14": 2, "2025-10-29": 17}, "ETH9": {}, "ETH10": {"2025-12-17": 2, "2025-12-10": 2, "2025-11-19": 2, "2025-11-14": 2, "2025-10-29": 9}, "ETH11": {}, "ETH12": {}, "ETH13": {}, "ETH14": {}, "ETH15": {}}}}, "ASIC_CTRL": {"QUAN-176": {"ASIC_1": {"CtrlA": {}, "CtrlB": {}, "CtrlC": {"2025-12-03": 1, "2025-11-19": 1, "2025-11-14": 1}, "CtrlD": {}, "CtrlE": {"2025-11-19": 2}, "CtrlF": {"2025-11-26": 1}, "CtrlG": {}, "CtrlH": {}}, "ASIC_2": {"CtrlA": {"2025-12-17": 2, "2025-11-14": 1}, "CtrlB": {}, "CtrlC": {"2025-12-03": 1, "2025-11-26": 2}, "CtrlD": {}, "CtrlE": {}, "CtrlF": {}, "CtrlG": {}, "CtrlH": {}}, "ASIC_3": {"CtrlA": {"2025-12-03": 1, "2025-11-19": 1, "2025-11-14": 2, "2025-10-29": 2}, "CtrlB": {"2025-12-03": 1}, "CtrlC": {"2025-12-03": 1, "2025-11-26": 1, "2025-11-14": 1, "2025-10-29": 2}, "CtrlD": {"2025-12-03": 1}, "CtrlE": {"2025-12-03": 1}, "CtrlF": {"2025-12-03": 2}, "CtrlG": {}, "CtrlH": {}}, "ASIC_4": {"CtrlA": {"2025-12-17": 1, "2025-12-03": 1, "2025-11-14": 1}, "CtrlB": {"2025-12-17": 1}, "CtrlC": {"2025-11-26": 3, "2025-11-14": 1}, "CtrlD": {}, "CtrlE": {"2025-12-03": 1}, "CtrlF": {}, "CtrlG": {}, "CtrlH": {}}, "ASIC_5": {"CtrlA": {"2025-12-17": 1, "2025-12-03": 1, "2025-12-10": 1, "2025-11-14": 1}, "CtrlB": {}, "CtrlC": {"2025-11-14": 2}, "CtrlD": {"2025-11-26": 1}, "CtrlE": {"2025-12-03": 1}, "CtrlF": {"2025-11-19": 1}, "CtrlG": {}, "CtrlH": {}}, "ASIC_6": {"CtrlA": {"2025-12-17": 2, "2025-11-26": 3}, "CtrlB": {"2025-12-10": 1, "2025-11-26": 2}, "CtrlC": {"2025-12-03": 2, "2025-11-26": 4, "2025-11-19": 1}, "CtrlD": {"2025-11-26": 2}, "CtrlE": {"2025-11-26": 1}, "CtrlF": {}, "CtrlG": {}, "CtrlH": {}}, "ASIC_7": {"CtrlA": {"2025-12-17": 3, "2025-12-10": 1, "2025-11-26": 1, "2025-11-14": 1, "2025-10-29": 2}, "CtrlB": {}, "CtrlC": {"2025-12-03": 1}, "CtrlD": {}, "CtrlE": {"2025-10-29": 1}, "CtrlF": {"2025-12-03": 1, "2025-11-26": 1}, "CtrlG": {}, "CtrlH": {}}, "ASIC_8": {"CtrlA": {"2025-12-17": 4, "2025-11-26": 1, "2025-11-19": 1}, "CtrlB": {}, "CtrlC": {"2025-12-03": 1}, "CtrlD": {}, "CtrlE": {}, "CtrlF": {"2025-11-19": 1}, "CtrlG": {}, "CtrlH": {}}}, "QUAN-210": {"ASIC_1": {"CtrlA": {}, "CtrlB": {"2025-12-03": 1}, "CtrlC": {}, "CtrlD": {}, "CtrlE": {}, "CtrlF": {}, "CtrlG": {}, "CtrlH": {}}, "ASIC_2": {"CtrlA": {}, "CtrlB": {"2025-11-26": 1}, "CtrlC": {}, "CtrlD": {}, "CtrlE": {}, "CtrlF": {"2025-12-17": 1, "2025-11-19": 1}, "CtrlG": {}, "CtrlH": {}}, "ASIC_3": {"CtrlA": {}, "CtrlB": {"2025-12-03": 1, "2025-11-26": 1, "2025-10-29": 2}, "CtrlC": {}, "CtrlD": {}, "CtrlE": {"2025-11-26": 1, "2025-11-19": 1}, "CtrlF": {}, "CtrlG": {}, "CtrlH": {}}, "ASIC_4": {"CtrlA": {"2025-12-17": 1, "2025-11-19": 1, "2025-11-14": 1}, "CtrlB": {"2025-11-26": 1, "2025-10-29": 1}, "CtrlC": {}, "CtrlD": {}, "CtrlE": {}, "CtrlF": {}, "CtrlG": {}, "CtrlH": {}}, "ASIC_5": {"CtrlA": {}, "CtrlB": {"2025-11-26": 1}, "CtrlC": {}, "CtrlD": {}, "CtrlE": {}, "CtrlF": {"2025-11-26": 1}, "CtrlG": {}, "CtrlH": {}}, "ASIC_6": {"CtrlA": {"2025-11-19": 1}, "CtrlB": {}, "CtrlC": {}, "CtrlD": {}, "CtrlE": {}, "CtrlF": {}, "CtrlG": {}, "CtrlH": {}}, "ASIC_7": {"CtrlA": {"2025-12-17": 1}, "CtrlB": {"2025-11-19": 1}, "CtrlC": {}, "CtrlD": {}, "CtrlE": {}, "CtrlF": {"2025-11-19": 1}, "CtrlG": {}, "CtrlH": {}}, "ASIC_8": {"CtrlA": {"2025-12-17": 1}, "CtrlB": {"2025-11-26": 1, "2025-11-19": 1, "2025-10-29": 1}, "CtrlC": {}, "CtrlD": {}, "CtrlE": {"2025-12-17": 1}, "CtrlF": {}, "CtrlG": {}, "CtrlH": {}}}, "QUAN-401": {"ASIC_1": {"CtrlA": {}, "CtrlB": {}, "CtrlC": {}, "CtrlD": {}, "CtrlE": {}, "CtrlF": {}, "CtrlG": {}, "CtrlH": {}}, "ASIC_2": {"CtrlA": {}, "CtrlB": {}, "CtrlC": {}, "CtrlD": {}, "CtrlE": {}, "CtrlF": {}, "CtrlG": {}, "CtrlH": {}}, "ASIC_3": {"CtrlA": {}, "CtrlB": {"2025-12-03": 1}, "CtrlC": {}, "CtrlD": {}, "CtrlE": {}, "CtrlF": {}, "CtrlG": {}, "CtrlH": {}}, "ASIC_4": {"CtrlA": {}, "CtrlB": {}, "CtrlC": {}, "CtrlD": {}, "CtrlE": {}, "CtrlF": {}, "CtrlG": {}, "CtrlH": {}}, "ASIC_5": {"CtrlA": {}, "CtrlB": {}, "CtrlC": {}, "CtrlD": {}, "CtrlE": {}, "CtrlF": {}, "CtrlG": {}, "CtrlH": {}}, "ASIC_6": {"CtrlA": {}, "CtrlB": {}, "CtrlC": {}, "CtrlD": {}, "CtrlE": {}, "CtrlF": {}, "CtrlG": {}, "CtrlH": {}}, "ASIC_7": {"CtrlA": {}, "CtrlB": {}, "CtrlC": {}, "CtrlD": {}, "CtrlE": {}, "CtrlF": {}, "CtrlG": {}, "CtrlH": {}}, "ASIC_8": {"CtrlA": {}, "CtrlB": {}, "CtrlC": {}, "CtrlD": {}, "CtrlE": {}, "CtrlF": {}, "CtrlG": {}, "CtrlH": {}}}}};
+
+        // --- Standard Stats Initialization ---
+        document.getElementById('statTotalUnits').textContent = overallStats.totalUnits;
+        document.getElementById('statPassed').textContent = overallStats.passed;
+        document.getElementById('statFixed').textContent = overallStats.fixed;
+        document.getElementById('statFailed').textContent = overallStats.failed;
+        document.getElementById('statFPY').textContent = `${overallStats.overallFPY}%`;
+        document.getElementById('statAPY').textContent = `${overallStats.overallAPY}%`;
+
+        // --- YIELD CHART LOGIC (Restored from GOLDEN) ---
+        window.yieldDisplayMode = 'percent';
+// --- YIELD CHART LOGIC (FIXED: Always Percent, Detailed Tooltips) ---
+        let yieldChart = null;
+
+        function updateYieldChart() {
+            // 直接讀取百分比數據，不進行 Unit/Percent 切換
+            const buildDates = yieldData.map(d => d.buildDate);
+            const apyData = yieldData.map(d => d.apy);
+            const fpyData = yieldData.map(d => d.fpy);
+
+            if (yieldChart) { yieldChart.destroy(); }
+
+            yieldChart = new Chart(document.getElementById('yieldChart').getContext('2d'), {
+                type: 'line',
+                data: { 
+                    labels: buildDates, 
+                    datasets: [
+                        { 
+                            label: 'APY (%)', 
+                            data: apyData, 
+                            borderColor: '#4fc3f7', 
+                            backgroundColor: 'rgba(79, 195, 247, 0.2)', 
+                            tension: 0.3, 
+                            fill: true,
+                            pointRadius: 4,
+                            pointHoverRadius: 6
+                        },
+                        { 
+                            label: 'FPY (%)', 
+                            data: fpyData, 
+                            borderColor: '#ff9800', 
+                            backgroundColor: 'rgba(255, 152, 0, 0.2)', 
+                            tension: 0.3, 
+                            fill: true,
+                            pointRadius: 4,
+                            pointHoverRadius: 6
+                        }
+                    ]
+                },
+                options: { 
+                    responsive: true, 
+                    maintainAspectRatio: false, 
+                    plugins: { 
+                        legend: { labels: { color: '#e8e8e8' } }, 
+                        datalabels: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                title: function(context) {
+                                    const date = context[0].label;
+                                    // 從原始數據中查找對應日期的詳細資訊
+                                    const data = yieldData.find(d => d.buildDate === date);
+                                    return `Build: ${date} (${data ? data.totalUnits : '?'} Units)`;
+                                },
+                                label: function(context) {
+                                    const date = context.label;
+                                    const data = yieldData.find(d => d.buildDate === date);
+                                    const val = context.parsed.y;
+                                    
+                                    // 恢復詳細的 Tooltip 顯示
+                                    if (context.dataset.label.includes('APY')) {
+                                        return `APY: ${val}% (Passed: ${data.passed}, Fixed: ${data.fixed})`;
+                                    } else {
+                                        return `FPY: ${val}% (Passed: ${data.passed} / ${data.totalUnits})`;
+                                    }
+                                }
+                            },
+                            backgroundColor: 'rgba(30, 42, 58, 0.95)',
+                            titleColor: '#4fc3f7',
+                            bodyColor: '#e8e8e8',
+                            borderColor: '#4fc3f7',
+                            borderWidth: 1,
+                            padding: 12,
+                            displayColors: true
+                        }
+                    }, 
+                    scales: { 
+                        y: { 
+                            beginAtZero: true, 
+                            max: 100, // 強制固定為 0-100%
+                            ticks: { callback: function(v){return v+'%'}, color: '#b0c4de' }, 
+                            title: { display: true, text: 'Yield Percentage (%)', color: '#4fc3f7' },
+                            grid: { color: 'rgba(176, 196, 222, 0.1)' }
+                        }, 
+                        x: { 
+                            ticks: { color: '#b0c4de' }, 
+                            grid: { color: 'rgba(176, 196, 222, 0.1)' } 
+                        } 
+                    } 
+                }
+            });
+        }
+        updateYieldChart();
+
+
+        // --- JIRA TRENDS & SELECT LOGIC (Restored from GOLDEN) ---
+        let jiraTrendChartAPY = null;
+        let jiraTrendChartFPY = null;
+        window.jiraTrendDisplayMode = 'percent';
+        window.fpyTrendDisplayMode = 'percent';
+
+        const jiraTrendSelectAPY = document.getElementById('jiraTrendSelectAPY');
+        const uniqueJirasAPY = [...new Set(jiraTrendDataAPY.filter(d => d.count > 0).map(d => d.jira))];
+        uniqueJirasAPY.forEach(jira => {
+            const option = document.createElement('option');
+            option.value = jira;
+            const summary = jiraMapping[jira] || '';
+            option.textContent = summary ? `${jira} - ${summary}` : jira;
+            jiraTrendSelectAPY.appendChild(option);
+        });
+        if (uniqueJirasAPY.length > 0) {
+            const shuffled = uniqueJirasAPY.sort(() => 0.5 - Math.random());
+            const defaultSelection = shuffled.slice(0, Math.min(3, uniqueJirasAPY.length));
+            Array.from(jiraTrendSelectAPY.options).forEach(option => {
+                if (defaultSelection.includes(option.value)) option.selected = true;
+            });
+        }
+
+        const jiraTrendSelectFPY = document.getElementById('jiraTrendSelectFPY');
+        const uniqueJirasFPY = [...new Set(jiraTrendDataFPY.map(d => d.jira))];
+        uniqueJirasFPY.forEach(jira => {
+            const option = document.createElement('option');
+            option.value = jira;
+            const summary = jiraMapping[jira] || '';
+            option.textContent = summary ? `${jira} - ${summary}` : jira;
+            jiraTrendSelectFPY.appendChild(option);
+        });
+        if (uniqueJirasFPY.length > 0) {
+            const shuffled = uniqueJirasFPY.sort(() => 0.5 - Math.random());
+            const defaultSelection = shuffled.slice(0, Math.min(3, uniqueJirasFPY.length));
+            Array.from(jiraTrendSelectFPY.options).forEach(option => {
+                if (defaultSelection.includes(option.value)) option.selected = true;
+            });
+        }
+
+        function updateJiraTrendChartAPY() {
+            const selectedJiras = Array.from(jiraTrendSelectAPY.selectedOptions).map(opt => opt.value);
+            if (selectedJiras.length === 0) {
+                if (jiraTrendChartAPY) { jiraTrendChartAPY.destroy(); jiraTrendChartAPY = null; }
+                return;
+            }
+            const dates = [...new Set(jiraTrendDataAPY.map(d => d.buildDate))].sort();
+            const datasets = selectedJiras.map((jira, idx) => {
+                const color = `hsl(${idx * (360 / selectedJiras.length)}, 70%, 60%)`;
+                return { 
+                    label: jira, 
+                    data: dates.map(date => { 
+                        const item = jiraTrendDataAPY.find(d => d.jira === jira && d.buildDate === date); 
+                        const buildData = yieldData.find(y => y.buildDate === date);
+                        const totalUnits = buildData ? buildData.totalUnits : 1;
+                        const percentage = item ? ((item.count / totalUnits) * 100).toFixed(2) : 0;
+                        const displayValue = window.jiraTrendDisplayMode === 'units' ? (item ? item.count : 0) : percentage;
+                        return displayValue;
+                    }),
+                    rawData: dates.map(date => {
+                        const item = jiraTrendDataAPY.find(d => d.jira === jira && d.buildDate === date);
+                        return item ? item.count : 0;
+                    }), borderColor: color, backgroundColor: color + '33', tension: 0.3 };
+            });
+            if (jiraTrendChartAPY) { jiraTrendChartAPY.destroy(); }
+            jiraTrendChartAPY = new Chart(document.getElementById('jiraTrendChartAPY').getContext('2d'), {
+                type: 'line', data: { labels: dates, datasets: datasets }, options: { 
+                    responsive: true, maintainAspectRatio: false, 
+                    plugins: { 
+                        legend: { labels: { color: '#e8e8e8', font: { size: 11 } } }, 
+                        title: { display: true, text: 'Jira Trend Analysis', color: '#4fc3f7', font: { size: 14, weight: 'bold' } },
+                        tooltip: { callbacks: { label: function(context) {
+                            const label = context.dataset.label || '';
+                            const rawValue = context.dataset.rawData[context.dataIndex];
+                            if (window.jiraTrendDisplayMode === 'units') return label + ': ' + rawValue + ' units';
+                            else return label + ': ' + context.parsed.y + '% (' + rawValue + ' units)';
+                        }}}
+                    }, scales: { y: { beginAtZero: true, title: { display: true, text: window.jiraTrendDisplayMode === 'units' ? 'APY Units' : 'APY %', color: '#4fc3f7', font: { size: 12, weight: 'bold' } }, ticks: { color: '#b0c4de' }, grid: { color: 'rgba(176, 196, 222, 0.1)' } }, x: { ticks: { color: '#b0c4de' }, grid: { color: 'rgba(176, 196, 222, 0.1)' } }}}
+            });
+        }
+
+        function updateJiraTrendChartFPY() {
+            const selectedJiras = Array.from(jiraTrendSelectFPY.selectedOptions).map(opt => opt.value);
+            if (selectedJiras.length === 0) {
+                if (jiraTrendChartFPY) { jiraTrendChartFPY.destroy(); jiraTrendChartFPY = null; }
+                return;
+            }
+            const dates = [...new Set(jiraTrendDataFPY.map(d => d.buildDate))].sort();
+            const datasets = selectedJiras.map((jira, idx) => {
+                const color = `hsl(${idx * (360 / selectedJiras.length)}, 70%, 60%)`;
+                return { 
+                    label: jira, 
+                    data: dates.map(date => { 
+                        const item = jiraTrendDataFPY.find(d => d.jira === jira && d.buildDate === date); 
+                        const buildData = yieldData.find(y => y.buildDate === date);
+                        const totalUnits = buildData ? buildData.totalUnits : 1;
+                        const percentage = item ? ((item.count / totalUnits) * 100).toFixed(2) : 0;
+                        const displayValue = window.fpyTrendDisplayMode === 'units' ? (item ? item.count : 0) : percentage;
+                        return displayValue;
+                    }),
+                    rawData: dates.map(date => {
+                        const item = jiraTrendDataFPY.find(d => d.jira === jira && d.buildDate === date);
+                        return item ? item.count : 0;
+                    }), borderColor: color, backgroundColor: color + '33', tension: 0.3 };
+            });
+            if (jiraTrendChartFPY) { jiraTrendChartFPY.destroy(); }
+            jiraTrendChartFPY = new Chart(document.getElementById('jiraTrendChartFPY').getContext('2d'), {
+                type: 'line', data: { labels: dates, datasets: datasets }, options: { 
+                    responsive: true, maintainAspectRatio: false, 
+                    plugins: { 
+                        legend: { labels: { color: '#e8e8e8', font: { size: 11 } } }, 
+                        title: { display: true, text: 'Jira Trend Analysis', color: '#4fc3f7', font: { size: 14, weight: 'bold' } },
+                        tooltip: { callbacks: { label: function(context) {
+                            const label = context.dataset.label || '';
+                            const rawValue = context.dataset.rawData[context.dataIndex];
+                            if (window.fpyTrendDisplayMode === 'units') return label + ': ' + rawValue + ' units';
+                            else return label + ': ' + context.parsed.y + '% (' + rawValue + ' units)';
+                        }}}
+                    }, scales: { y: { beginAtZero: true, title: { display: true, text: window.fpyTrendDisplayMode === 'units' ? 'FPY Units' : 'FPY %', color: '#4fc3f7', font: { size: 12, weight: 'bold' } }, ticks: { color: '#b0c4de' }, grid: { color: 'rgba(176, 196, 222, 0.1)' } }, x: { ticks: { color: '#b0c4de' }, grid: { color: 'rgba(176, 196, 222, 0.1)' } }}}
+            });
+        }
+
+        jiraTrendSelectAPY.addEventListener('change', updateJiraTrendChartAPY);
+        jiraTrendSelectFPY.addEventListener('change', updateJiraTrendChartFPY);
+        updateJiraTrendChartAPY();
+        updateJiraTrendChartFPY();
+
+        // --- Heatmap Logic (UPDATED with Date Filter) ---
+        const heatmapTypeSelect = document.getElementById('heatmapTypeSelect');
+        const heatmapJiraSelect = document.getElementById('heatmapJiraSelect');
+        const heatmapDisplay = document.getElementById('heatmapDisplay');
+        const heatmapBuildFilter = document.getElementById('heatmapBuildFilter'); 
+
+        // 1. Populate Heatmap Build Filter
+        buildDatesForFilter.forEach(date => {
+            const option = document.createElement('option');
+            option.value = date;
+            option.textContent = date;
+            heatmapBuildFilter.appendChild(option);
+        });
+
+        // 2. Populate Jira Select
+        const allJiras = new Set();
+        Object.values(allHeatmaps).forEach(heatmapType => {
+            Object.keys(heatmapType).forEach(jira => allJiras.add(jira));
+        });
+        [...allJiras].sort().forEach(jira => {
+            const option = document.createElement('option');
+            option.value = jira;
+            const summary = jiraMapping[jira] || '';
+            option.textContent = summary ? `${jira} - ${summary}` : jira;
+            heatmapJiraSelect.appendChild(option);
+        });
+
+        function updateHeatmapTypeOptions() {
+            const selectedJira = heatmapJiraSelect.value;
+            if (!selectedJira) {
+                heatmapTypeSelect.innerHTML = '<option value="">Select Jira first</option>';
+                heatmapDisplay.innerHTML = '<div class="no-data">Select a Jira code</div>';
+                return;
+            }
+            const availableTypes = [];
+            const typeLabels = { 'UBB_ASIC': 'UBB vs ASIC', 'UBB_ETH': 'UBB vs ETH', 'UBB_CTRL': 'UBB vs Ctrl', 'ASIC_ETH': 'ASIC vs ETH', 'ASIC_CTRL': 'ASIC vs Ctrl' };
+            Object.keys(allHeatmaps).forEach(heatmapType => {
+                if (allHeatmaps[heatmapType][selectedJira]) availableTypes.push(heatmapType);
+            });
+            heatmapTypeSelect.innerHTML = '';
+            if (availableTypes.length === 0) {
+                heatmapTypeSelect.innerHTML = '<option value="">No heatmaps available</option>';
+                heatmapDisplay.innerHTML = '<div class="no-data">No heatmap data for this Jira</div>';
+            } else {
+                availableTypes.forEach(type => {
+                    const option = document.createElement('option');
+                    option.value = type;
+                    option.textContent = typeLabels[type];
+                    heatmapTypeSelect.appendChild(option);
+                });
+                displayHeatmap();
+            }
+        }
+
+        function getColorForValue(value, max) {
+            if (value === 0) return '#2c3e50';
+            const intensity = Math.min(value / max, 1);
+            return `rgb(${Math.floor(255 * intensity)}, ${Math.floor(100 * (1 - intensity))}, 50)`;
+        }
+
+        function displayHeatmap() {
+            const selectedType = heatmapTypeSelect.value;
+            const selectedJira = heatmapJiraSelect.value;
+            // Get selected dates
+            const selectedDates = Array.from(heatmapBuildFilter.selectedOptions).map(opt => opt.value);
+            const useDateFilter = selectedDates.length > 0;
+
+            if (!selectedJira || !selectedType || !allHeatmaps[selectedType] || !allHeatmaps[selectedType][selectedJira]) {
+                heatmapDisplay.innerHTML = '<div class="no-data">Select Jira and heatmap type</div>';
+                return;
+            }
+
+            const rawData = allHeatmaps[selectedType][selectedJira]; 
+            const rows = Object.keys(rawData);
+            const cols = Object.keys(rawData[rows[0]]);
+            
+            const computedMatrix = {};
+            let maxValue = 0;
+
+            // Compute matrix based on filtered dates
+            rows.forEach(row => {
+                computedMatrix[row] = {};
+                cols.forEach(col => {
+                    const cellData = rawData[row][col]; 
+                    let total = 0;
+                    
+                    // cellData is now a dictionary { '2024-01-01': 5, '2024-01-02': 2 }
+                    if (typeof cellData === 'object' && cellData !== null) {
+                        Object.keys(cellData).forEach(date => {
+                            if (!useDateFilter || selectedDates.includes(date)) {
+                                total += cellData[date];
+                            }
+                        });
+                    } 
+                    // Fallback for any legacy int data
+                    else if (typeof cellData === 'number') {
+                        total = (!useDateFilter) ? cellData : 0;
+                    }
+                    
+                    computedMatrix[row][col] = total;
+                    maxValue = Math.max(maxValue, total);
+                });
+            });
+
+            let html = '<table class="heatmap-table"><thead><tr><th>' + selectedType.replace('_', ' vs ') + '</th>';
+            cols.forEach(col => { html += '<th>' + col + '</th>'; });
+            html += '</tr></thead><tbody>';
+            
+            rows.forEach(row => {
+                html += '<tr><th>' + row + '</th>';
+                cols.forEach(col => {
+                    const value = computedMatrix[row][col];
+                    const color = getColorForValue(value, maxValue);
+                    const textColor = value > maxValue * 0.5 ? '#ffffff' : '#e8e8e8';
+                    const title = `${row} - ${col}: ${value}` + (useDateFilter ? ' (Filtered)' : '');
+                    html += `<td class="heatmap-cell" style="background-color: ${color}; color: ${textColor};" title="${title}">${value}</td>`;
+                });
+                html += '</tr>';
+            });
+            html += '</tbody></table>';
+            
+            const filterInfo = useDateFilter ? `For ${selectedDates.length} selected builds` : 'All Builds';
+            html += `<p style="margin-top: 10px; color: #b0c4de; text-align: center; font-size: 0.95em;"><strong>${selectedJira}: ${selectedType.replace('_', ' vs ')}</strong> | Max: ${maxValue} | ${filterInfo}</p>`;
+            heatmapDisplay.innerHTML = html;
+        }
+
+        heatmapJiraSelect.addEventListener('change', updateHeatmapTypeOptions);
+        heatmapTypeSelect.addEventListener('change', displayHeatmap);
+        heatmapBuildFilter.addEventListener('change', displayHeatmap);
+        updateHeatmapTypeOptions();
+
+        // --- Jira Summary Logic (MODIFIED for Column Width) ---
+        const buildFilterSelect = document.getElementById('buildFilterSelect');
+        buildDatesForFilter.forEach(date => {
+            const option = document.createElement('option');
+            option.value = date;
+            option.textContent = date;
+            buildFilterSelect.appendChild(option);
+        });
+        
+        function updateSummaryTableByBuildDate() {
+            const selectedDates = Array.from(buildFilterSelect.selectedOptions).map(opt => opt.value);
+            const summaryTable = document.getElementById('summaryTable');
+
+            // --- HEADER CONSTRUCTION (Modified for widths) ---
+            let summaryHTML = '<thead><tr>';
+            // 1. Jira: Fixed width, ALLOW wrap
+            summaryHTML += '<th style="width: 85px; white-space: normal;">Jira</th>';
+            // 2. Summary: Auto width, allow wrap (takes remaining space)
+            summaryHTML += '<th>Summary</th>';
+            
+            // 3. Metric Columns: Narrow fixed width, header can wrap if needed, content centered
+            // Define common style for metric headers
+            const metricHeaderStyle = 'width: 85px; text-align: center; white-space: normal; vertical-align: bottom; line-height: 1.2; font-size: 11px;';
+            
+            summaryHTML += '<th style="' + metricHeaderStyle + '" title="boards affected by this Jira in first pass results">FPY Impacted<br>Units</th>';
+            summaryHTML += '<th style="' + metricHeaderStyle + '" title="units successfully recovered">Recovered<br>Units</th>';
+            summaryHTML += '<th style="' + metricHeaderStyle + '" title="units with the failure symptom, including legacy boards not yet cleared">APY Impacted<br>Units</th>';
+            summaryHTML += '<th style="' + metricHeaderStyle + '" title="percentage yield loss due to this issue on FPY">FPY Yield<br>Impact (%)</th>';
+            summaryHTML += '<th style="' + metricHeaderStyle + '" title="percentage yield loss due to this issue on APY">APY Yield<br>Impact (%)</th>';
+            summaryHTML += '</tr></thead><tbody>';
+
+            const datesToFilter = selectedDates.length === 0 ? buildDatesForFilter : selectedDates;
+            const filteredSummary = {};
+
+            jiraTrendDataFPY.forEach(item => {
+                if (datesToFilter.includes(item.buildDate)) {
+                    if (!filteredSummary[item.jira]) filteredSummary[item.jira] = {fpyUnits: 0, apyUnits: 0};
+                    filteredSummary[item.jira].fpyUnits += item.count;
+                }
+            });
+
+            jiraTrendDataAPY.forEach(item => {
+                if (datesToFilter.includes(item.buildDate)) {
+                    if (!filteredSummary[item.jira]) filteredSummary[item.jira] = {fpyUnits: 0, apyUnits: 0};
+                    filteredSummary[item.jira].apyUnits += item.count;
+                }
+            });
+
+            Object.keys(filteredSummary).forEach(jira => {
+                const data = filteredSummary[jira];
+                data.recovered = Math.max(0, data.fpyUnits - data.apyUnits);
+            });
+
+            let totalUnitsInSelectedDates = 0;
+            yieldData.forEach(build => {
+                if (datesToFilter.includes(build.buildDate)) totalUnitsInSelectedDates += build.totalUnits;
+            });
+            if (totalUnitsInSelectedDates === 0) totalUnitsInSelectedDates = overallStats.totalUnits;
+
+            const sortedJiras = Object.keys(filteredSummary).sort((a, b) => (filteredSummary[b].fpyUnits || 0) - (filteredSummary[a].fpyUnits || 0));
+
+            // Define common style for metric cells (centered, no wrap)
+            const metricCellStyle = 'text-align: center; white-space: nowrap;';
+
+            sortedJiras.forEach(jira => {
+                const data = filteredSummary[jira];
+                const fpyRate = (data.fpyUnits / totalUnitsInSelectedDates * 100).toFixed(2);
+                const apyRate = (data.apyUnits / totalUnitsInSelectedDates * 100).toFixed(2);
+                const summary = jiraMapping[jira] || '';
+                const tooltipText = summary ? `${jira}: ${summary}` : jira;
+                const escapedTooltip = tooltipText.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+                const jiraUrl = jiraUrls[jira];
+                const jiraDisplay = jiraUrl ? `<a href="${jiraUrl}" target="_blank" title="${escapedTooltip}" style="color: #4fc3f7; text-decoration: none; font-weight: bold;">${jira}</a>` : `<strong title="${escapedTooltip}" style="cursor: help;">${jira}</strong>`;
+                
+                summaryHTML += `<tr>
+                    <td style="white-space: normal; word-break: break-word;">${jiraDisplay}</td>
+                    <td style="color:#bdc3c7; font-size:0.9em; white-space: normal; min-width: 200px;">${summary}</td>
+                    <td style="${metricCellStyle}">${data.fpyUnits}</td>
+                    <td style="${metricCellStyle}">${data.recovered}</td>
+                    <td style="${metricCellStyle}">${data.apyUnits}</td>
+                    <td style="${metricCellStyle}">${fpyRate}%</td>
+                    <td style="${metricCellStyle}">${apyRate}%</td>
+                </tr>`;
+            });
+
+            summaryHTML += '</tbody>';
+            summaryTable.innerHTML = summaryHTML;
+        }
+
+        updateSummaryTableByBuildDate();
+        buildFilterSelect.addEventListener('change', updateSummaryTableByBuildDate);
+
+        // --- View Switching and Toggles ---
+        function switchTrendView(view) {
+            const apySection = document.getElementById('apySection');
+            const fpySection = document.getElementById('fpySection');
+            const btnAPY = document.getElementById('btnAPY');
+            const btnFPY = document.getElementById('btnFPY');
+
+            if (view === 'APY') {
+                apySection.style.display = 'block';
+                fpySection.style.display = 'none';
+                btnAPY.style.background = 'linear-gradient(135deg, #4fc3f7 0%, #039be5 100%)';
+                btnAPY.style.color = 'white';
+                btnAPY.style.border = 'none';
+                btnAPY.style.boxShadow = '0 2px 8px rgba(79, 195, 247, 0.3)';
+                btnFPY.style.background = 'rgba(79, 195, 247, 0.15)';
+                btnFPY.style.color = '#4fc3f7';
+                btnFPY.style.border = '2px solid rgba(79, 195, 247, 0.5)';
+                btnFPY.style.boxShadow = 'none';
+            } else {
+                apySection.style.display = 'none';
+                fpySection.style.display = 'block';
+                btnFPY.style.background = 'linear-gradient(135deg, #4fc3f7 0%, #039be5 100%)';
+                btnFPY.style.color = 'white';
+                btnFPY.style.border = 'none';
+                btnFPY.style.boxShadow = '0 2px 8px rgba(79, 195, 247, 0.3)';
+                btnAPY.style.background = 'rgba(79, 195, 247, 0.15)';
+                btnAPY.style.color = '#4fc3f7';
+                btnAPY.style.border = '2px solid rgba(79, 195, 247, 0.5)';
+                btnAPY.style.boxShadow = 'none';
+            }
+        }
+        
+        function showHeatmapGuide(){document.getElementById("heatmapGuideModal").style.display="block";}
+        function closeHeatmapGuide(){document.getElementById("heatmapGuideModal").style.display="none";}
+        window.onclick=function(e){if(e.target==document.getElementById("heatmapGuideModal"))closeHeatmapGuide();};
+        document.addEventListener("keydown",function(e){if(e.key==="Escape")closeHeatmapGuide();});
+
+        // DOM Loaded Listeners
+        document.addEventListener('DOMContentLoaded', function() {
+            const toggleBtn = document.getElementById('togglePercentUnits');
+            if (toggleBtn) {
+                toggleBtn.addEventListener('click', function() {
+                    window.jiraTrendDisplayMode = window.jiraTrendDisplayMode === 'percent' ? 'units' : 'percent';
+                    if (window.jiraTrendDisplayMode === 'percent') {
+                        toggleBtn.textContent = '%';
+                        toggleBtn.style.backgroundColor = '#4fc3f7';
+                        toggleBtn.style.color = '#1a1f36';
+                    } else {
+                        toggleBtn.textContent = 'Units';
+                        toggleBtn.style.backgroundColor = '#66bb6a';
+                        toggleBtn.style.color = '#ffffff';
+                    }
+                    updateJiraTrendChartAPY();
+                });
+            }
+
+            const toggleFPYBtn = document.getElementById('togglePercentUnitsFPY');
+            if (toggleFPYBtn) {
+                toggleFPYBtn.addEventListener('click', function() {
+                    window.fpyTrendDisplayMode = window.fpyTrendDisplayMode === 'percent' ? 'units' : 'percent';
+                    if (window.fpyTrendDisplayMode === 'percent') {
+                        toggleFPYBtn.textContent = '%';
+                        toggleFPYBtn.style.backgroundColor = '#4fc3f7';
+                        toggleFPYBtn.style.color = '#1a1f36';
+                    } else {
+                        toggleFPYBtn.textContent = 'Units';
+                        toggleFPYBtn.style.backgroundColor = '#66bb6a';
+                        toggleFPYBtn.style.color = '#ffffff';
+                    }
+                    updateJiraTrendChartFPY();
+                });
+            }
+        });
+    </script>
+    
+    <div id="heatmapGuideModal" class="modal">
+        <div class="modal-content">
+            <span class="close-button" onclick="closeHeatmapGuide()">&times;</span>
+            <h2 style="color: #4fc3f7; border-bottom: 2px solid #4fc3f7; padding-bottom: 10px; margin-bottom: 20px;">Dashboard Guide</h2>
+            <div style="display: grid; gap: 20px;">
+                <div>
+                    <h3 style="color: #4fc3f7; margin-bottom: 8px;">1. Filter Heatmap by Build Date</h3>
+                    <p style="color: #b0c4de;">Use "Ctrl + Click" (Windows) or "Cmd + Click" (Mac) to select multiple build dates. This updates the heatmap to show cumulative failures only for the selected builds.</p>
+                </div>
+                <div>
+                    <h3 style="color: #4fc3f7; margin-bottom: 8px;">2. Heatmap Types</h3>
+                    <ul style="color: #b0c4de; margin-left: 20px;">
+                        <li><strong>UBB vs ASIC:</strong> Shows failures mapping specific UBB slots to ASIC locations.</li>
+                        <li><strong>UBB vs ETH:</strong> Shows network failures per UBB slot.</li>
+                        <li><strong>UBB vs Ctrl:</strong> Shows controller failures per UBB.</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
